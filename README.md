@@ -121,7 +121,7 @@ The package injects a default stylesheet the first time it is mounted. If you wa
 
 ## Limitations
 
-- Keyboard navigation and full ARIA behavior are not complete yet.
+- Keyboard navigation complete yet.
 - Runtime changes to `size` or `multiple` update state classes, but structural mode changes may still be better handled by a teardown and remount strategy.
 - This package enhances native selects; it does not attempt to emulate every browser-specific behavior.
 

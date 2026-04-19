@@ -57,6 +57,7 @@ class WorseSelect {
     optionsWrapperElement?: HTMLDivElement;
     optionsScrollerElement?: HTMLDivElement;
     searchInputElement?: HTMLInputElement;
+    statusElement?: HTMLDivElement;
     optionObserver?: MutationObserver;
 
     // Event listener references are stored so destroy() can reliably unregister them.
@@ -71,6 +72,7 @@ class WorseSelect {
     // searchTerm is intentionally held on the instance so filtering survives internal rerenders.
     open = false;
     searchTerm = '';
+    lastSearchStatusMessage = '';
 
     constructor(
         selectElement: HTMLSelectElement,
@@ -93,6 +95,7 @@ class WorseSelect {
         this.optionsWrapperElement = this.worseSelectElement.querySelector('.worse-select-options') as HTMLDivElement | undefined;
         this.optionsScrollerElement = this.worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement | undefined;
         this.searchInputElement = this.worseSelectElement.querySelector('.worse-select-search-input') as HTMLInputElement | undefined;
+        this.statusElement = this.worseSelectElement.querySelector('.worse-select-status') as HTMLDivElement | undefined;
 
         bindSelectEvents(this);
         handleOptionChanges(this);
@@ -139,8 +142,10 @@ class WorseSelect {
         this.optionsWrapperElement = undefined;
         this.optionsScrollerElement = undefined;
         this.searchInputElement = undefined;
+        this.statusElement = undefined;
         this.open = false;
         this.searchTerm = '';
+        this.lastSearchStatusMessage = '';
     }
 }
 
@@ -320,6 +325,18 @@ function ensureStyles() {
             color: inherit;
             padding: 0;
         }
+
+        .worse-select-visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
     `;
 
     document.head.appendChild(styleElement);
@@ -492,6 +509,20 @@ function createSearchHtml(worseSelectInstance: WorseSelect) {
     `;
 }
 
+function createStatusHtml(worseSelectInstance: WorseSelect) {
+    if (!worseSelectInstance.config.searchable) {
+        return '';
+    }
+
+    return `
+      <div
+        class="worse-select-status worse-select-visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"></div>
+    `;
+}
+
 function createWorseSelect(worseSelectInstance: WorseSelect) {
     const headerStyleAttribute = buildWorseSelectHeaderStyleAttribute(worseSelectInstance);
     const containerClasses = ['worse-select-container'];
@@ -515,6 +546,7 @@ function createWorseSelect(worseSelectInstance: WorseSelect) {
       </button>
       <div class="worse-select-options">
         ${createSearchHtml(worseSelectInstance)}
+        ${createStatusHtml(worseSelectInstance)}
         <div class="worse-select-options-scroller"${headerStyleAttribute}></div>
       </div>
     </div>
@@ -672,6 +704,47 @@ function scrollFirstVisibleMatchIntoView(worseSelectInstance: WorseSelect) {
     firstVisibleMatch.scrollIntoView({ block: 'nearest' });
 }
 
+function updateSearchStatus(worseSelectInstance: WorseSelect) {
+    const statusElement = worseSelectInstance.statusElement;
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
+
+    if (!(statusElement instanceof HTMLDivElement)) return;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+
+    const searchTerm = worseSelectInstance.searchTerm.trim();
+    if (!searchTerm) {
+        statusElement.textContent = '';
+        worseSelectInstance.lastSearchStatusMessage = '';
+        return;
+    }
+
+    const visibleResultCount = Array.from(
+        optionsScrollerElement.querySelectorAll('.worse-select-option')
+    ).filter(optionElement => {
+        return optionElement instanceof HTMLDivElement && !optionElement.classList.contains('hidden');
+    }).length;
+
+    const nextMessage =
+        visibleResultCount === 0
+            ? 'No results found'
+            : visibleResultCount === 1
+                ? '1 result available'
+                : `${visibleResultCount} results available`;
+
+    if (nextMessage === worseSelectInstance.lastSearchStatusMessage) {
+        return;
+    }
+
+    worseSelectInstance.lastSearchStatusMessage = nextMessage;
+
+    statusElement.textContent = '';
+    window.setTimeout(() => {
+        if (worseSelectInstance.statusElement === statusElement) {
+            statusElement.textContent = nextMessage;
+        }
+    }, 0);
+}
+
 function applySearchFilter(worseSelectInstance: WorseSelect) {
     const searchTerm = worseSelectInstance.searchTerm.trim().toLowerCase();
 
@@ -691,6 +764,8 @@ function applySearchFilter(worseSelectInstance: WorseSelect) {
 
         worseOptionElement.setAttribute('data-label', label);
     });
+
+    updateSearchStatus(worseSelectInstance);
 
     // Scrolling the first visible hit into view makes search feel responsive,
     // especially for long manufacturer/model lists where the match may be off-screen.
