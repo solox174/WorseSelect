@@ -14,16 +14,16 @@
     "progressive-enhancement",
     "html-select"
   ],
-  "homepage": "https://github.com/your-name/worse-select#readme",
+  "homepage": "https://github.com/solox174/WorseSelect#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-name/worse-select.git"
+    "url": "git+https://github.com/solox174/WorseSelect.git"
   },
   "bugs": {
-    "url": "https://github.com/your-name/worse-select/issues"
+    "url": "https://github.com/solox174/WorseSelect/issues"
   },
   "license": "AGPL-3.0-or-later",
-  "author": "",
+  "author": "Kevin Matthews",
   "type": "module",
   "files": [
     "dist",
