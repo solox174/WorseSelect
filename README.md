@@ -28,7 +28,7 @@ import { worseSelect } from 'worse-select';
 worseSelect();
 ```
 
-This scans the document for native `<select>` elements and enhances each one once.
+When called with no arguments, `worseSelect()` uses the global `document` object as its root and scans the entire document for native `<select>` elements to enhance.
 
 ## HTML examples
 
@@ -92,14 +92,15 @@ That split keeps the API aligned with standard HTML behavior.
 
 ### `worseSelect(root?: ParentNode): void`
 
-Enhances every native `<select>` element found under the provided root.
+Enhances every native `<select>` element found under the provided root. If `root` is omitted, it defaults to `document`.
 
 ```ts
+worseSelect();                 // same as worseSelect(document)
 worseSelect(document);
 worseSelect(someContainerElement);
 ```
 
-The function is safe to call multiple times. A given `<select>` is mounted only once.
+Use a custom root when you want to enhance only a specific subtree instead of the full document. The function is safe to call multiple times, and a given `<select>` is mounted only once.
 
 ## How it works
 
@@ -135,4 +136,4 @@ This package is designed around a few core principles:
 
 ## License
 
-MIT
+AGPL-3.0-or-later
