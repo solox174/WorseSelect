@@ -29,6 +29,10 @@ type SelectConfig = {
 type ConfigKey = keyof SelectConfig;
 type RootNode = ParentNode;
 
+type WorseSelectOptions = {
+    observe?: boolean;
+};
+
 const configKeys = Object.keys(DEFAULT_CONFIG) as ConfigKey[];
 
 // Bidirectional lookup tables between native <option> elements and their rendered
@@ -156,19 +160,82 @@ class WorseSelect {
  * makes it suitable for progressive enhancement after initial page load or after partial DOM
  * updates.
  *
+ * If `options.observe` is `true`, the root is also watched for newly added `<select>` elements
+ * and those are enhanced automatically.
+ *
+ * The returned cleanup function disconnects any root observer created for this call and destroys
+ * mounted worse-select instances found under the provided root.
+ *
  * @param root - The DOM subtree to scan for `<select>` elements.
+ * @param options - Optional behavior flags such as DOM observation.
  */
-export function worseSelect(root: RootNode = document) {
-    const selectElements = Array.from(root.querySelectorAll<HTMLSelectElement>('select'));
+export function worseSelect(
+    root: RootNode = document,
+    options: WorseSelectOptions = {}
+): () => void {
+    mountSelectsInRoot(root);
 
+    let rootObserver: MutationObserver | undefined;
+
+    if (options.observe) {
+        rootObserver = new MutationObserver(mutationList => {
+            for (const mutation of mutationList) {
+                if (mutation.type !== 'childList') continue;
+
+                mutation.addedNodes.forEach(addedNode => {
+                    if (!(addedNode instanceof Element)) return;
+
+                    if (addedNode instanceof HTMLSelectElement) {
+                        mountSelectElement(addedNode, root);
+                        return;
+                    }
+
+                    const nestedSelectElements = addedNode.querySelectorAll<HTMLSelectElement>('select');
+                    nestedSelectElements.forEach(selectElement => {
+                        mountSelectElement(selectElement, root);
+                    });
+                });
+            }
+        });
+
+        rootObserver.observe(root, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    return () => {
+        rootObserver?.disconnect();
+
+        const selectElements = getSelectElementsInRoot(root);
+        selectElements.forEach(selectElement => {
+            const worseSelectInstance = instances.get(selectElement);
+            if (!worseSelectInstance) return;
+
+            worseSelectInstance.destroy();
+            instances.delete(selectElement);
+        });
+    };
+}
+
+function getSelectElementsInRoot(root: RootNode) {
+    return Array.from(root.querySelectorAll<HTMLSelectElement>('select'));
+}
+
+function mountSelectsInRoot(root: RootNode) {
+    const selectElements = getSelectElementsInRoot(root);
     selectElements.forEach(selectElement => {
-        const existingWorseSelectInstance = instances.get(selectElement);
-        if (existingWorseSelectInstance) return;
-
-        const worseSelectInstance = new WorseSelect(selectElement, getConfig(selectElement), root);
-        worseSelectInstance.mount();
-        instances.set(selectElement, worseSelectInstance);
+        mountSelectElement(selectElement, root);
     });
+}
+
+function mountSelectElement(selectElement: HTMLSelectElement, root: RootNode) {
+    const existingWorseSelectInstance = instances.get(selectElement);
+    if (existingWorseSelectInstance) return;
+
+    const worseSelectInstance = new WorseSelect(selectElement, getConfig(selectElement), root);
+    worseSelectInstance.mount();
+    instances.set(selectElement, worseSelectInstance);
 }
 
 function ensureStyles() {
