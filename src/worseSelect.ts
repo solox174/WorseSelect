@@ -45,6 +45,8 @@ const divToOption = new WeakMap<HTMLDivElement, HTMLOptionElement>();
 // This protects against double-mounting when worseSelect() is called repeatedly.
 const instances = new WeakMap<HTMLSelectElement, WorseSelect>();
 
+let worseSelectIdCounter = 0;
+
 /**
  * Internal controller for a single enhanced `<select>` element.
  *
@@ -55,6 +57,7 @@ class WorseSelect {
     selectElement: HTMLSelectElement;
     config: SelectConfig;
     root: RootNode;
+    instanceId: string;
 
     worseSelectElement?: HTMLDivElement;
     headerElement?: HTMLButtonElement;
@@ -69,14 +72,18 @@ class WorseSelect {
     onSelectChange?: EventListener;
     onOptionsClick?: EventListener;
     onHeaderClick?: EventListener;
+    onHeaderKeyDown?: EventListener;
+    onOptionsKeyDown?: EventListener;
     onDocumentPointerDown?: EventListener;
     onSearchInput?: EventListener;
+    onSearchKeyDown?: EventListener;
 
     // open controls dropdown visibility in single-select mode.
     // searchTerm is intentionally held on the instance so filtering survives internal rerenders.
     open = false;
     searchTerm = '';
     lastSearchStatusMessage = '';
+    activeOption?: HTMLOptionElement;
 
     constructor(
         selectElement: HTMLSelectElement,
@@ -86,6 +93,7 @@ class WorseSelect {
         this.selectElement = selectElement;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.root = root;
+        this.instanceId = `worse-select-${++worseSelectIdCounter}`;
     }
 
     mount() {
@@ -125,6 +133,16 @@ class WorseSelect {
             this.onHeaderClick = undefined;
         }
 
+        if (this.onHeaderKeyDown && this.headerElement) {
+            this.headerElement.removeEventListener('keydown', this.onHeaderKeyDown);
+            this.onHeaderKeyDown = undefined;
+        }
+
+        if (this.onOptionsKeyDown && this.optionsScrollerElement) {
+            this.optionsScrollerElement.removeEventListener('keydown', this.onOptionsKeyDown);
+            this.onOptionsKeyDown = undefined;
+        }
+
         if (this.onDocumentPointerDown) {
             document.removeEventListener('pointerdown', this.onDocumentPointerDown);
             this.onDocumentPointerDown = undefined;
@@ -133,6 +151,11 @@ class WorseSelect {
         if (this.onSearchInput && this.searchInputElement) {
             this.searchInputElement.removeEventListener('input', this.onSearchInput);
             this.onSearchInput = undefined;
+        }
+
+        if (this.onSearchKeyDown && this.searchInputElement) {
+            this.searchInputElement.removeEventListener('keydown', this.onSearchKeyDown);
+            this.onSearchKeyDown = undefined;
         }
 
         // Drop all option links before removing DOM so future mounts start cleanly.
@@ -150,6 +173,7 @@ class WorseSelect {
         this.open = false;
         this.searchTerm = '';
         this.lastSearchStatusMessage = '';
+        this.activeOption = undefined;
     }
 }
 
@@ -245,11 +269,29 @@ function ensureStyles() {
     styleElement.setAttribute('data-worse-select-styles', 'true');
     styleElement.textContent = `
         .worse-select-container {
+            --ws-border-color: #767676;
+            --ws-border-radius: 2px;
+            --ws-bg: #fff;
+            --ws-text-color: inherit;
+            --ws-disabled-bg: #f0f0f0;
+            --ws-disabled-text-color: #6d6d6d;
+            --ws-hover-bg: #e8f0fe;
+            --ws-active-bg: #eef4ff;
+            --ws-active-outline: #2563eb;
+            --ws-selected-bg: #d2e3fc;
+            --ws-selected-text-color: #174ea6;
+            --ws-focus-outline: #2563eb;
+            --ws-search-border-color: #b7b7b7;
+            --ws-divider-color: #d0d0d0;
+            --ws-highlight-bg: #fff3a3;
+            --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+
             position: relative;
             display: inline-block;
             min-width: 0;
             font: inherit;
             vertical-align: middle;
+            color: var(--ws-text-color);
         }
 
         .worse-select-container.listbox {
@@ -261,14 +303,14 @@ function ensureStyles() {
             width: ${DEFAULT_CONFIG.width};
             height: ${DEFAULT_CONFIG.height};
             padding: 0 28px 0 8px;
-            border: 1px solid #767676;
-            border-radius: 2px;
-            background-color: #fff;
+            border: 1px solid var(--ws-border-color);
+            border-radius: var(--ws-border-radius);
+            background-color: var(--ws-bg);
             background-repeat: no-repeat;
             background-position: right 8px center;
             background-size: 10px 10px;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23333333' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-            color: inherit;
+            color: var(--ws-text-color);
             font: inherit;
             line-height: normal;
             text-align: left;
@@ -296,13 +338,15 @@ function ensureStyles() {
         }
 
         .worse-select-container.disabled .worse-select-header {
-            background-color: #f0f0f0;
-            color: #6d6d6d;
+            background-color: var(--ws-disabled-bg);
+            color: var(--ws-disabled-text-color);
             cursor: not-allowed;
         }
 
-        .worse-select-header:focus-visible {
-            outline: 2px solid #2563eb;
+        .worse-select-header:focus-visible,
+        .worse-select-options-scroller:focus-visible,
+        .worse-select-search-input:focus-visible {
+            outline: 2px solid var(--ws-focus-outline);
             outline-offset: 1px;
         }
 
@@ -314,10 +358,10 @@ function ensureStyles() {
             right: 0;
             z-index: 1000;
             display: none;
-            border: 1px solid #767676;
-            border-radius: 2px;
-            background: #fff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+            border: 1px solid var(--ws-border-color);
+            border-radius: var(--ws-border-radius);
+            background: var(--ws-bg);
+            box-shadow: var(--ws-shadow);
             padding: 2px;
         }
 
@@ -336,7 +380,7 @@ function ensureStyles() {
 
         .worse-select-search {
             padding: 4px;
-            border-bottom: 1px solid #d0d0d0;
+            border-bottom: 1px solid var(--ws-divider-color);
             margin-bottom: 2px;
         }
 
@@ -345,10 +389,11 @@ function ensureStyles() {
             width: 100%;
             height: 32px;
             padding: 0 8px;
-            border: 1px solid #b7b7b7;
-            border-radius: 2px;
+            border: 1px solid var(--ws-search-border-color);
+            border-radius: var(--ws-border-radius);
             font: inherit;
-            color: inherit;
+            color: var(--ws-text-color);
+            background: var(--ws-bg);
         }
 
         .worse-select-options-scroller {
@@ -358,24 +403,36 @@ function ensureStyles() {
 
         .worse-select-option {
             padding: 4px 8px;
-            border-radius: 2px;
+            border-radius: var(--ws-border-radius);
             cursor: pointer;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: var(--ws-text-color);
         }
 
         .worse-select-option:hover {
-            background: #e8f0fe;
+            background: var(--ws-hover-bg);
+        }
+
+        .worse-select-option.active {
+            background: var(--ws-active-bg);
+            outline: 1px solid var(--ws-active-outline);
+            outline-offset: -1px;
         }
 
         .worse-select-option.selected {
-            background: #d2e3fc;
-            color: #174ea6;
+            background: var(--ws-selected-bg);
+            color: var(--ws-selected-text-color);
+        }
+
+        .worse-select-option.selected.active {
+            outline: 1px solid var(--ws-active-outline);
+            outline-offset: -1px;
         }
 
         .worse-select-option.disabled {
-            color: #9aa0a6;
+            color: var(--ws-disabled-text-color);
             cursor: not-allowed;
         }
 
@@ -388,7 +445,7 @@ function ensureStyles() {
         }
 
         .worse-select-option mark {
-            background: #fff3a3;
+            background: var(--ws-highlight-bg);
             color: inherit;
             padding: 0;
         }
@@ -430,9 +487,6 @@ function parseConfigValue<K extends ConfigKey>(key: K, attr: string): SelectConf
 function getConfig(selectElement: Element): SelectConfig {
     const config: SelectConfig = { ...DEFAULT_CONFIG };
 
-    // Only custom widget settings are read from data-* attributes.
-    // Native select behavior such as size or multiple should be read from the real
-    // HTMLSelectElement so markup semantics stay canonical.
     for (let i = 0; i < configKeys.length; i++) {
         const key = configKeys[i];
         const dataAttributeName = `data-${toKebabCase(key)}`;
@@ -467,9 +521,6 @@ function buildWorseSelectHeaderStyleAttribute(worseSelectInstance: WorseSelect) 
 }
 
 function shouldUseListboxMode(worseSelectInstance: WorseSelect) {
-    // Listbox mode is derived from the real select's size attribute.
-    // size > 1 means the native control conceptually behaves like a visible list,
-    // so the custom UI should also stay expanded instead of acting like a popup.
     return worseSelectInstance.selectElement.size > 1;
 }
 
@@ -498,10 +549,12 @@ function highlightOptionLabel(label: string, searchTerm: string) {
         return escapedLabel;
     }
 
-    // Highlighting is done on escaped HTML, not raw text, so search decoration
-    // cannot accidentally inject markup.
     const matcher = new RegExp(`(${escapeRegExp(trimmedSearchTerm)})`, 'ig');
     return escapedLabel.replace(matcher, '<mark>$1</mark>');
+}
+
+function getOptionElementId(worseSelectInstance: WorseSelect, optionIndex: number) {
+    return `${worseSelectInstance.instanceId}-option-${optionIndex}`;
 }
 
 function linkOption(selectOption: HTMLOptionElement, worseOptionElement: HTMLDivElement) {
@@ -531,13 +584,19 @@ function getWorseOptionClasses(selectOption: HTMLOptionElement) {
     return classes.join(' ');
 }
 
-function createWorseOptionHtml(selectOption: HTMLOptionElement, searchTerm = '') {
+function createWorseOptionHtml(
+    worseSelectInstance: WorseSelect,
+    selectOption: HTMLOptionElement,
+    optionIndex: number,
+    searchTerm = ''
+) {
     const worseOptionClasses = getWorseOptionClasses(selectOption);
     const optionLabel = selectOption.textContent ?? '';
     const optionLabelHtml = highlightOptionLabel(optionLabel, searchTerm);
 
     return `
     <div
+        id="${getOptionElementId(worseSelectInstance, optionIndex)}"
         class="${worseOptionClasses}"
         data-value="${escapeHtml(selectOption.value)}"
         data-label="${escapeHtml(optionLabel)}"
@@ -549,9 +608,14 @@ function createWorseOptionHtml(selectOption: HTMLOptionElement, searchTerm = '')
     `;
 }
 
-function createWorseOptionElement(selectOption: HTMLOptionElement, searchTerm = '') {
+function createWorseOptionElement(
+    worseSelectInstance: WorseSelect,
+    selectOption: HTMLOptionElement,
+    optionIndex: number,
+    searchTerm = ''
+) {
     const worseOptionElement = document.createRange().createContextualFragment(
-        createWorseOptionHtml(selectOption, searchTerm)
+        createWorseOptionHtml(worseSelectInstance, selectOption, optionIndex, searchTerm)
     ).firstElementChild as HTMLDivElement;
 
     linkOption(selectOption, worseOptionElement);
@@ -625,6 +689,7 @@ function createWorseSelect(worseSelectInstance: WorseSelect) {
 
     const optionsScrollerElement = worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement;
     optionsScrollerElement.setAttribute('role', 'listbox');
+    optionsScrollerElement.tabIndex = shouldUseListboxMode(worseSelectInstance) ? 0 : -1;
 
     if (isMultipleSelect(worseSelectInstance)) {
         optionsScrollerElement.setAttribute('aria-multiselectable', 'true');
@@ -632,7 +697,12 @@ function createWorseSelect(worseSelectInstance: WorseSelect) {
 
     const selectOptions = worseSelectInstance.selectElement.options;
     for (let i = 0; i < selectOptions.length; i++) {
-        const worseOptionElement = createWorseOptionElement(selectOptions[i], worseSelectInstance.searchTerm);
+        const worseOptionElement = createWorseOptionElement(
+            worseSelectInstance,
+            selectOptions[i],
+            i,
+            worseSelectInstance.searchTerm
+        );
         optionsScrollerElement.appendChild(worseOptionElement);
     }
 
@@ -651,9 +721,6 @@ function syncDimensionsFromNative(worseSelectInstance: WorseSelect) {
 
     const computedStyle = window.getComputedStyle(selectElement);
 
-    // The custom shell inherits size and typography from the hidden native control.
-    // That keeps the replacement visually aligned with consumer CSS instead of forcing
-    // users to style two separate widgets.
     if (computedStyle.width && computedStyle.width !== 'auto') {
         worseSelectElement.style.width = computedStyle.width;
     }
@@ -664,6 +731,214 @@ function syncDimensionsFromNative(worseSelectInstance: WorseSelect) {
 
     headerElement.style.font = computedStyle.font;
     optionsScrollerElement.style.maxHeight = `${worseSelectInstance.config.dropdownHeightPx}px`;
+}
+
+function getSelectableVisibleOptions(worseSelectInstance: WorseSelect) {
+    return Array.from(worseSelectInstance.selectElement.options).filter(selectOption => {
+        if (selectOption.disabled) return false;
+
+        const worseOptionElement = optionToDiv.get(selectOption);
+        if (!(worseOptionElement instanceof HTMLDivElement)) return false;
+
+        return !worseOptionElement.classList.contains('hidden');
+    });
+}
+
+function scrollOptionIntoView(selectOption: HTMLOptionElement | undefined) {
+    if (!selectOption) return;
+
+    const worseOptionElement = optionToDiv.get(selectOption);
+    if (!(worseOptionElement instanceof HTMLDivElement)) return;
+
+    worseOptionElement.scrollIntoView({ block: 'nearest' });
+}
+
+function getDefaultActiveOption(worseSelectInstance: WorseSelect) {
+    const selectableVisibleOptions = getSelectableVisibleOptions(worseSelectInstance);
+    if (selectableVisibleOptions.length === 0) return undefined;
+
+    const selectedVisibleOption = selectableVisibleOptions.find(selectOption => selectOption.selected);
+    return selectedVisibleOption ?? selectableVisibleOptions[0];
+}
+
+function ensureValidActiveOption(worseSelectInstance: WorseSelect) {
+    const selectableVisibleOptions = getSelectableVisibleOptions(worseSelectInstance);
+
+    if (selectableVisibleOptions.length === 0) {
+        worseSelectInstance.activeOption = undefined;
+        updateActiveDescendant(worseSelectInstance);
+        updateWorseActiveState(worseSelectInstance);
+        return;
+    }
+
+    const currentActiveOption = worseSelectInstance.activeOption;
+    if (currentActiveOption && selectableVisibleOptions.includes(currentActiveOption)) {
+        updateActiveDescendant(worseSelectInstance);
+        updateWorseActiveState(worseSelectInstance);
+        return;
+    }
+
+    worseSelectInstance.activeOption = getDefaultActiveOption(worseSelectInstance);
+    updateActiveDescendant(worseSelectInstance);
+    updateWorseActiveState(worseSelectInstance);
+}
+
+function updateActiveDescendant(worseSelectInstance: WorseSelect) {
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+
+    const activeOption = worseSelectInstance.activeOption;
+    if (!activeOption) {
+        optionsScrollerElement.removeAttribute('aria-activedescendant');
+        return;
+    }
+
+    const worseOptionElement = optionToDiv.get(activeOption);
+    if (!(worseOptionElement instanceof HTMLDivElement)) {
+        optionsScrollerElement.removeAttribute('aria-activedescendant');
+        return;
+    }
+
+    optionsScrollerElement.setAttribute('aria-activedescendant', worseOptionElement.id);
+}
+
+function updateWorseActiveState(worseSelectInstance: WorseSelect) {
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+
+    Array.from(optionsScrollerElement.children).forEach(worseOptionElement => {
+        if (!(worseOptionElement instanceof HTMLDivElement)) return;
+        worseOptionElement.classList.remove('active');
+    });
+
+    const activeOption = worseSelectInstance.activeOption;
+    if (!activeOption) return;
+
+    const worseOptionElement = optionToDiv.get(activeOption);
+    worseOptionElement?.classList.add('active');
+}
+
+function setActiveOption(
+    worseSelectInstance: WorseSelect,
+    selectOption: HTMLOptionElement | undefined,
+    scrollIntoView = true
+) {
+    worseSelectInstance.activeOption = selectOption;
+    updateActiveDescendant(worseSelectInstance);
+    updateWorseActiveState(worseSelectInstance);
+
+    if (scrollIntoView) {
+        scrollOptionIntoView(selectOption);
+    }
+}
+
+function moveActiveOption(worseSelectInstance: WorseSelect, delta: number) {
+    const selectableVisibleOptions = getSelectableVisibleOptions(worseSelectInstance);
+    if (selectableVisibleOptions.length === 0) return;
+
+    const currentActiveOption = worseSelectInstance.activeOption;
+    const currentIndex = currentActiveOption
+        ? selectableVisibleOptions.indexOf(currentActiveOption)
+        : -1;
+
+    const fallbackIndex = delta > 0 ? 0 : selectableVisibleOptions.length - 1;
+    const nextIndex = currentIndex === -1
+        ? fallbackIndex
+        : Math.max(0, Math.min(selectableVisibleOptions.length - 1, currentIndex + delta));
+
+    setActiveOption(worseSelectInstance, selectableVisibleOptions[nextIndex]);
+}
+
+function moveActiveOptionToBoundary(worseSelectInstance: WorseSelect, boundary: 'start' | 'end') {
+    const selectableVisibleOptions = getSelectableVisibleOptions(worseSelectInstance);
+    if (selectableVisibleOptions.length === 0) return;
+
+    const targetOption = boundary === 'start'
+        ? selectableVisibleOptions[0]
+        : selectableVisibleOptions[selectableVisibleOptions.length - 1];
+
+    setActiveOption(worseSelectInstance, targetOption);
+}
+
+function getPageJumpSize(worseSelectInstance: WorseSelect) {
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return 10;
+
+    const firstVisibleOptionElement = Array.from(
+        optionsScrollerElement.querySelectorAll('.worse-select-option')
+    ).find(optionElement => {
+        return optionElement instanceof HTMLDivElement && !optionElement.classList.contains('hidden');
+    });
+
+    if (!(firstVisibleOptionElement instanceof HTMLDivElement)) {
+        return 10;
+    }
+
+    const optionHeight = firstVisibleOptionElement.offsetHeight || 1;
+    return Math.max(1, Math.floor(optionsScrollerElement.clientHeight / optionHeight));
+}
+
+function moveActiveOptionByPage(worseSelectInstance: WorseSelect, direction: 1 | -1) {
+    const pageJumpSize = getPageJumpSize(worseSelectInstance);
+    moveActiveOption(worseSelectInstance, direction * pageJumpSize);
+}
+
+function commitActiveOptionSelection(worseSelectInstance: WorseSelect) {
+    const activeOption = worseSelectInstance.activeOption;
+    const selectElement = worseSelectInstance.selectElement;
+
+    if (!activeOption || activeOption.disabled) return;
+
+    if (selectElement.multiple) {
+        activeOption.selected = !activeOption.selected;
+    } else {
+        selectElement.selectedIndex = Array.from(selectElement.options).indexOf(activeOption);
+    }
+
+    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function closeWorseSelect(worseSelectInstance: WorseSelect) {
+    if (shouldUseListboxMode(worseSelectInstance)) return;
+
+    worseSelectInstance.open = false;
+    updateWorseOpenState(worseSelectInstance);
+}
+
+function openWorseSelect(worseSelectInstance: WorseSelect) {
+    if (worseSelectInstance.selectElement.disabled) return;
+    if (shouldUseListboxMode(worseSelectInstance)) return;
+
+    worseSelectInstance.open = true;
+    updateWorseOpenState(worseSelectInstance);
+    ensureValidActiveOption(worseSelectInstance);
+}
+
+function openWorseSelectAndFocusList(worseSelectInstance: WorseSelect) {
+    openWorseSelect(worseSelectInstance);
+
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+
+    optionsScrollerElement.tabIndex = 0;
+    optionsScrollerElement.focus();
+    ensureValidActiveOption(worseSelectInstance);
+    scrollOptionIntoView(worseSelectInstance.activeOption);
+}
+
+function closeWorseSelectAndFocusHeader(worseSelectInstance: WorseSelect) {
+    closeWorseSelect(worseSelectInstance);
+    worseSelectInstance.headerElement?.focus();
+}
+
+function toggleWorseSelect(worseSelectInstance: WorseSelect) {
+    if (shouldUseListboxMode(worseSelectInstance)) return;
+
+    if (worseSelectInstance.open) {
+        closeWorseSelect(worseSelectInstance);
+    } else {
+        openWorseSelect(worseSelectInstance);
+    }
 }
 
 function updateWorseOpenState(worseSelectInstance: WorseSelect) {
@@ -682,7 +957,17 @@ function updateWorseOpenState(worseSelectInstance: WorseSelect) {
 
     if (worseSelectInstance.optionsScrollerElement instanceof HTMLDivElement) {
         worseSelectInstance.optionsScrollerElement.setAttribute('aria-multiselectable', String(isMultipleSelect(worseSelectInstance)));
+        optionsScrollerTabState(worseSelectInstance);
     }
+}
+
+function optionsScrollerTabState(worseSelectInstance: WorseSelect) {
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+
+    const isListboxMode = shouldUseListboxMode(worseSelectInstance);
+    const isOpen = isListboxMode ? true : worseSelectInstance.open;
+    optionsScrollerElement.tabIndex = isOpen ? 0 : -1;
 }
 
 function updateWorseSelectedState(worseSelectInstance: WorseSelect) {
@@ -731,7 +1016,7 @@ function updateWorseDisabledState(worseSelectInstance: WorseSelect) {
     Array.from(selectElement.options).forEach(selectOption => {
         const worseOptionElement = optionToDiv.get(selectOption);
         worseOptionElement?.classList.toggle('disabled', selectOption.disabled);
-        worseOptionElement?.setAttribute('aria-disabled', String(selectOption.disabled));
+        worseOptionElement?.setAttribute('aria-disabled', String(selectOption.disabled'));
     });
 }
 
@@ -833,46 +1118,21 @@ function applySearchFilter(worseSelectInstance: WorseSelect) {
     });
 
     updateSearchStatus(worseSelectInstance);
-
-    // Scrolling the first visible hit into view makes search feel responsive,
-    // especially for long manufacturer/model lists where the match may be off-screen.
+    ensureValidActiveOption(worseSelectInstance);
     scrollFirstVisibleMatchIntoView(worseSelectInstance);
-}
-
-function closeWorseSelect(worseSelectInstance: WorseSelect) {
-    if (shouldUseListboxMode(worseSelectInstance)) return;
-
-    worseSelectInstance.open = false;
-    updateWorseOpenState(worseSelectInstance);
-}
-
-function openWorseSelect(worseSelectInstance: WorseSelect) {
-    if (worseSelectInstance.selectElement.disabled) return;
-    if (shouldUseListboxMode(worseSelectInstance)) return;
-
-    worseSelectInstance.open = true;
-    updateWorseOpenState(worseSelectInstance);
-}
-
-function toggleWorseSelect(worseSelectInstance: WorseSelect) {
-    if (shouldUseListboxMode(worseSelectInstance)) return;
-
-    if (worseSelectInstance.open) {
-        closeWorseSelect(worseSelectInstance);
-    } else {
-        openWorseSelect(worseSelectInstance);
-    }
 }
 
 function bindSelectEvents(worseSelectInstance: WorseSelect) {
     const worseSelectElement = worseSelectInstance.worseSelectElement;
     const selectElement = worseSelectInstance.selectElement;
     const optionsWrapperElement = worseSelectInstance.optionsWrapperElement;
+    const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
     const headerElement = worseSelectInstance.headerElement;
     const searchInputElement = worseSelectInstance.searchInputElement;
 
     if (!(worseSelectElement instanceof HTMLDivElement)) return;
     if (!(optionsWrapperElement instanceof HTMLDivElement)) return;
+    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
     if (!(headerElement instanceof HTMLButtonElement)) return;
 
     const onOptionsClick: EventListener = event => {
@@ -888,9 +1148,8 @@ function bindSelectEvents(worseSelectInstance: WorseSelect) {
         const selectOption = divToOption.get(worseOptionElement);
         if (!selectOption || selectOption.disabled) return;
 
-        // Multiple selects toggle the clicked option, while single selects replace the value.
-        // The native select is updated first, then a synthetic change event asks the rest of
-        // the system to sync from that canonical state.
+        setActiveOption(worseSelectInstance, selectOption, false);
+
         if (selectElement.multiple) {
             selectOption.selected = !selectOption.selected;
         } else {
@@ -908,10 +1167,103 @@ function bindSelectEvents(worseSelectInstance: WorseSelect) {
         updateWorseOpenState(worseSelectInstance);
         syncDimensionsFromNative(worseSelectInstance);
         applySearchFilter(worseSelectInstance);
+        ensureValidActiveOption(worseSelectInstance);
     };
 
     const onHeaderClick: EventListener = () => {
         toggleWorseSelect(worseSelectInstance);
+    };
+
+    const onHeaderKeyDown: EventListener = event => {
+        if (!(event instanceof KeyboardEvent)) return;
+
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                openWorseSelectAndFocusList(worseSelectInstance);
+                moveActiveOption(worseSelectInstance, 1);
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                openWorseSelectAndFocusList(worseSelectInstance);
+                moveActiveOption(worseSelectInstance, -1);
+                break;
+            case 'Home':
+                event.preventDefault();
+                openWorseSelectAndFocusList(worseSelectInstance);
+                moveActiveOptionToBoundary(worseSelectInstance, 'start');
+                break;
+            case 'End':
+                event.preventDefault();
+                openWorseSelectAndFocusList(worseSelectInstance);
+                moveActiveOptionToBoundary(worseSelectInstance, 'end');
+                break;
+            case 'PageDown':
+                event.preventDefault();
+                openWorseSelectAndFocusList(worseSelectInstance);
+                moveActiveOptionByPage(worseSelectInstance, 1);
+                break;
+            case 'PageUp':
+                event.preventDefault();
+                openWorseSelectAndFocusList(worseSelectInstance, -1);
+                break;
+            case 'Enter':
+            case ' ':
+                event.preventDefault();
+                if (worseSelectInstance.open) {
+                    closeWorseSelectAndFocusHeader(worseSelectInstance);
+                } else {
+                    openWorseSelectAndFocusList(worseSelectInstance);
+                }
+                break;
+            default:
+                break;
+        }
+    };
+
+    const onOptionsKeyDown: EventListener = event => {
+        if (!(event instanceof KeyboardEvent)) return;
+
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                moveActiveOption(worseSelectInstance, 1);
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                moveActiveOption(worseSelectInstance, -1);
+                break;
+            case 'Home':
+                event.preventDefault();
+                moveActiveOptionToBoundary(worseSelectInstance, 'start');
+                break;
+            case 'End':
+                event.preventDefault();
+                moveActiveOptionToBoundary(worseSelectInstance, 'end');
+                break;
+            case 'PageDown':
+                event.preventDefault();
+                moveActiveOptionByPage(worseSelectInstance, 1);
+                break;
+            case 'PageUp':
+                event.preventDefault();
+                moveActiveOptionByPage(worseSelectInstance, -1);
+                break;
+            case 'Enter':
+            case ' ':
+                event.preventDefault();
+                commitActiveOptionSelection(worseSelectInstance);
+                if (!selectElement.multiple) {
+                    closeWorseSelectAndFocusHeader(worseSelectInstance);
+                }
+                break;
+            case 'Escape':
+                event.preventDefault();
+                closeWorseSelectAndFocusHeader(worseSelectInstance);
+                break;
+            default:
+                break;
+        }
     };
 
     const onDocumentPointerDown: EventListener = event => {
@@ -930,19 +1282,68 @@ function bindSelectEvents(worseSelectInstance: WorseSelect) {
         applySearchFilter(worseSelectInstance);
     };
 
+    const onSearchKeyDown: EventListener = event => {
+        if (!(event instanceof KeyboardEvent)) return;
+
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                optionsScrollerElement.focus();
+                moveActiveOption(worseSelectInstance, 1);
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                optionsScrollerElement.focus();
+                moveActiveOption(worseSelectInstance, -1);
+                break;
+            case 'Home':
+                event.preventDefault();
+                optionsScrollerElement.focus();
+                moveActiveOptionToBoundary(worseSelectInstance, 'start');
+                break;
+            case 'End':
+                event.preventDefault();
+                optionsScrollerElement.focus();
+                moveActiveOptionToBoundary(worseSelectInstance, 'end');
+                break;
+            case 'PageDown':
+                event.preventDefault();
+                optionsScrollerElement.focus();
+                moveActiveOptionByPage(worseSelectInstance, 1);
+                break;
+            case 'PageUp':
+                event.preventDefault();
+                optionsScrollerElement.focus();
+                moveActiveOptionByPage(worseSelectInstance, -1);
+                break;
+            case 'Escape':
+                event.preventDefault();
+                closeWorseSelectAndFocusHeader(worseSelectInstance);
+                break;
+            default:
+                break;
+        }
+    };
+
     optionsWrapperElement.addEventListener('click', onOptionsClick);
     selectElement.addEventListener('change', onSelectChange);
     headerElement.addEventListener('click', onHeaderClick);
+    headerElement.addEventListener('keydown', onHeaderKeyDown);
+    optionsScrollerElement.addEventListener('keydown', onOptionsKeyDown);
     document.addEventListener('pointerdown', onDocumentPointerDown);
 
     if (searchInputElement instanceof HTMLInputElement) {
         searchInputElement.addEventListener('input', onSearchInput);
+        searchInputElement.addEventListener('keydown', onSearchKeyDown);
         worseSelectInstance.onSearchInput = onSearchInput;
+        worseSelectInstance.onSearchKeyDown = onSearchKeyDown;
     }
 
     worseSelectInstance.onOptionsClick = onOptionsClick;
     worseSelectInstance.onSelectChange = onSelectChange;
     worseSelectInstance.onHeaderClick = onHeaderClick;
+    worseSelectInstance.onHeaderKeyDown = onHeaderKeyDown;
+    worseSelectInstance.onOptionsKeyDown = onOptionsKeyDown;
     worseSelectInstance.onDocumentPointerDown = onDocumentPointerDown;
 
     updateWorseHeaderState(worseSelectInstance);
@@ -951,6 +1352,7 @@ function bindSelectEvents(worseSelectInstance: WorseSelect) {
     updateWorseOpenState(worseSelectInstance);
     syncDimensionsFromNative(worseSelectInstance);
     applySearchFilter(worseSelectInstance);
+    ensureValidActiveOption(worseSelectInstance);
 }
 
 function handleOptionChanges(worseSelectInstance: WorseSelect) {
@@ -962,38 +1364,63 @@ function handleOptionChanges(worseSelectInstance: WorseSelect) {
     if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
 
     const observer = new MutationObserver(mutationList => {
+        let shouldRebuildOptions = false;
         let shouldUpdateState = false;
 
         for (const mutation of mutationList) {
             if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(mutationNode => {
-                    if (!(mutationNode instanceof HTMLOptionElement)) return;
-
-                    const worseOptionElement = createWorseOptionElement(mutationNode, worseSelectInstance.searchTerm);
-                    const optionIndex = Array.from(selectElement.options).indexOf(mutationNode);
-                    const referenceElement = optionsScrollerElement.children[optionIndex];
-
-                    if (referenceElement) {
-                        referenceElement.before(worseOptionElement);
-                    } else {
-                        optionsScrollerElement.appendChild(worseOptionElement);
-                    }
-                });
-
-                mutation.removedNodes.forEach(mutationNode => {
-                    if (!(mutationNode instanceof HTMLOptionElement)) return;
-
-                    const worseOptionElement = optionToDiv.get(mutationNode);
-                    worseOptionElement?.remove();
-                    unlinkOption(mutationNode);
-                });
-
+                shouldRebuildOptions = true;
                 shouldUpdateState = true;
             }
 
             if (mutation.type === 'attributes') {
                 shouldUpdateState = true;
             }
+        }
+
+        if (shouldRebuildOptions) {
+            Array.from(selectElement.options).forEach((selectOption, optionIndex) => {
+                const existingWorseOptionElement = optionToDiv.get(selectOption);
+                if (existingWorseOptionElement instanceof HTMLDivElement) {
+                    existingWorseOptionElement.id = getOptionElementId(worseSelectInstance, optionIndex);
+                    return;
+                }
+
+                const worseOptionElement = createWorseOptionElement(
+                    worseSelectInstance,
+                    selectOption,
+                    optionIndex,
+                    worseSelectInstance.searchTerm
+                );
+                optionsScrollerElement.appendChild(worseOptionElement);
+            });
+
+            Array.from(optionsScrollerElement.children).forEach(worseOptionElement => {
+                if (!(worseOptionElement instanceof HTMLDivElement)) return;
+
+                const selectOption = divToOption.get(worseOptionElement);
+                if (selectOption && Array.from(selectElement.options).includes(selectOption)) {
+                    return;
+                }
+
+                worseOptionElement.remove();
+            });
+
+            Array.from(selectElement.options).forEach((selectOption, optionIndex) => {
+                const worseOptionElement = optionToDiv.get(selectOption);
+                if (!(worseOptionElement instanceof HTMLDivElement)) return;
+
+                const referenceElement = optionsScrollerElement.children[optionIndex];
+                if (referenceElement !== worseOptionElement) {
+                    if (referenceElement) {
+                        referenceElement.before(worseOptionElement);
+                    } else {
+                        optionsScrollerElement.appendChild(worseOptionElement);
+                    }
+                }
+
+                worseOptionElement.id = getOptionElementId(worseSelectInstance, optionIndex);
+            });
         }
 
         if (shouldUpdateState) {
@@ -1003,12 +1430,10 @@ function handleOptionChanges(worseSelectInstance: WorseSelect) {
             updateWorseOpenState(worseSelectInstance);
             syncDimensionsFromNative(worseSelectInstance);
             applySearchFilter(worseSelectInstance);
+            ensureValidActiveOption(worseSelectInstance);
         }
     });
 
-    // The observer exists because dynamic option cascades are a core use case for this widget.
-    // When upstream controls replace manufacturer/model options, the custom DOM should follow
-    // automatically instead of asking the consumer to manually tear down and rebuild.
     observer.observe(selectElement, {
         childList: true,
         subtree: false,
@@ -1023,8 +1448,6 @@ function renderSelect(worseSelectInstance: WorseSelect) {
     const { selectElement, worseSelectElement } = worseSelectInstance;
     if (!(worseSelectElement instanceof HTMLDivElement)) return;
 
-    // The native element is hidden, not removed, so form state and browser semantics remain intact.
-    // The custom element is purely a styled interaction layer sitting next to the real control.
     selectElement.style.display = 'none';
     selectElement.after(worseSelectElement);
 }
