@@ -15,22 +15,6 @@ Most custom select libraries replace the browser. WorseSelect enhances it.
 - Supports dynamically added selects with optional observer-based auto-mount
 - Uses standard HTML attributes where possible
 
-## Install
-
-```bash
-npm install worse-select
-```
-
-## Basic usage
-
-```ts
-import { worseSelect } from 'worse-select';
-
-worseSelect();
-```
-
-With no arguments, `worseSelect()` scans `document` and enhances every native `<select>` it finds. 
-
 ## How it works
 
 WorseSelect hides the native `<select>` and renders a companion UI next to it. User interaction updates the native element, and the custom UI syncs from that canonical state. That keeps integration predictable because your app still deals with a real form control.
@@ -60,6 +44,22 @@ Its performance story is straightforward:
 - Optional DOM observation is available when you need it, instead of being required for every use case
 
 For typical form UIs, the goal is low overhead and simple integration rather than aggressive abstraction. If you need virtualization, remote search, or a fully custom combobox system, this package is probably aiming at a different problem. 
+
+## Install
+
+```bash
+npm install worse-select
+```
+
+## Basic usage
+
+```ts
+import { worseSelect } from 'worse-select';
+
+worseSelect();
+```
+
+With no arguments, `worseSelect()` scans `document` and enhances every native `<select>` it finds.
 
 ## HTML examples
 
