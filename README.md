@@ -140,7 +140,10 @@ That split keeps the API aligned with standard HTML instead of introducing paral
 
 ## API
 
-### `worseSelect(root?: ParentNode, options?: { observe?: boolean }): () => void`
+### `worseSelect()`
+```ts
+worseSelect(root?: ParentNode, options?: { observe?: boolean }): () => void
+```
 
 Enhances native `<select>` elements under the given root.
 
