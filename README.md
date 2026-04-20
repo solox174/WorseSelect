@@ -31,25 +31,6 @@ worseSelect();
 
 With no arguments, `worseSelect()` scans `document` and enhances every native `<select>` it finds. 
 
-## Example
-
-### Searchable single select
-
-```html
-<select data-searchable="true">
-  <option value="">Choose one</option>
-  <option value="ford">Ford</option>
-  <option value="honda">Honda</option>
-  <option value="toyota">Toyota</option>
-</select>
-```
-
-```ts
-import { worseSelect } from 'worse-select';
-
-worseSelect();
-```
-
 ## How it works
 
 WorseSelect hides the native `<select>` and renders a companion UI next to it. User interaction updates the native element, and the custom UI syncs from that canonical state. That keeps integration predictable because your app still deals with a real form control.
