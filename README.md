@@ -1,6 +1,6 @@
 # worse-select
 
-A lightweight, dependency-free progressive enhancement for native HTML `<select>` elements.
+Native-first, dependency-free custom selects with search, multi-select, and no framework lock-in.
 
 WorseSelect keeps the native `<select>` as the source of truth and layers a custom UI on top. That means form submission, validation, disabled state, and change events still come from the real control instead of a reimplementation.
 
@@ -21,16 +21,24 @@ WorseSelect hides the native `<select>` and renders a companion UI next to it. U
 
 Options are linked to rendered elements internally, and a `MutationObserver` can keep the UI in sync when options are added, removed, or updated dynamically. That makes the library a good fit for applications that render or change the DOM after initial page load.
 
+When search is enabled, WorseSelect highlights matching options and scrolls the first match into view. It does not try to turn the control into a remote-search or virtualized combobox system.
+
 ## Features
 
 - Native-first state model
 - Dependency-free
-- Optional search input
+- Searchable option lists with match highlighting
 - Listbox support via native `size`
 - Multi-select support via native `multiple`
 - Dynamic DOM support with optional observer-based auto-mount
 - Theming through CSS variables
 - Cleanup support for SPA usage
+
+## Status
+
+WorseSelect is suitable for early production use in applications that want a native-first custom select without a dependency-heavy abstraction layer.
+
+Keyboard interaction and ARIA state management are built in, but custom select behavior can have browser- and assistive-technology-specific edge cases. Validate the behavior in your target environments before relying on it broadly.
 
 ## Performance
 
@@ -43,7 +51,7 @@ Its performance story is straightforward:
 - Direct DOM enhancement works well in apps that already render standard HTML
 - Optional DOM observation is available when you need it, instead of being required for every use case
 
-For typical form UIs, the goal is low overhead and simple integration rather than aggressive abstraction. If you need virtualization, remote search, or a fully custom combobox system, this package is probably aiming at a different problem. 
+For typical form UIs, the goal is low overhead, predictable behavior, and simple integration.
 
 ## Install
 
@@ -102,12 +110,12 @@ With no arguments, `worseSelect()` scans `document` and enhances every native `<
 
 Custom widget behavior is configured with `data-*` attributes on the native `<select>`.
 
-| Attribute | Type | Default | Description |
-|---|---|---|---|
-| `data-searchable` | `true \| false` | `false` | Adds a search input above the options list |
+| Attribute | Type | Default | Description                                 |
+|---|---|---|---------------------------------------------|
+| `data-searchable` | `true \| false` | `false` | Adds a search input above the options list  |
 | `data-dropdown-height-px` | `number` | `500` | Sets the max height of the options scroller |
-| `data-width` | `string` | `100%` | Overrides the rendered header width |
-| `data-height` | `string` | `32px` | Overrides the rendered header height |
+| `data-width` | `string` | `100%` | Overrides the rendered widget width         |
+| `data-height` | `string` | `32px` | Overrides the rendered widget height        |
 
 ## Native attributes
 
@@ -117,11 +125,12 @@ These stay native on purpose:
 - `multiple` controls multi-select behavior
 - `disabled` disables the control
 
-That split keeps the API aligned with standard HTML instead of introducing parallel widget options. 
+That split keeps the API aligned with standard HTML instead of introducing parallel widget options.
 
 ## API
 
 ### `worseSelect()`
+
 ```ts
 worseSelect(root?: ParentNode, options?: { observe?: boolean }): () => void
 ```
@@ -174,6 +183,7 @@ Override only what you need.
 - This package enhances native selects; it does not try to reproduce every browser-specific select behavior
 - Runtime changes to `size` or `multiple` may be better handled with teardown and remount if the control changes mode significantly
 - It is designed to stay small and predictable rather than cover every possible custom-select feature
+- It is not intended to replace virtualization, async search, or full combobox-style widgets
 
 ## Philosophy
 

@@ -1,18 +1,18 @@
 {
   "name": "worse-select",
   "version": "0.1.0",
-  "description": "A lightweight, dependency-free progressive-enhancement wrapper for native HTML select elements.",
+  "description": "Native-first, dependency-free custom selects with search, multi-select, and zero framework lock-in.",
   "keywords": [
     "select",
     "dropdown",
+    "custom-select",
     "listbox",
     "multiselect",
     "searchable-select",
-    "typescript",
-    "dom",
-    "form",
+    "native-select",
     "progressive-enhancement",
-    "html-select"
+    "html-select",
+    "typescript"
   ],
   "homepage": "https://github.com/solox174/WorseSelect#readme",
   "repository": {
