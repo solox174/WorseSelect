@@ -1,2 +1,2 @@
 // src/index.ts
-export { worseSelect } from "./worseSelect";
+export { worseSelect } from "./worse-select/core";

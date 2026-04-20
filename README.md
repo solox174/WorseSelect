@@ -2,11 +2,11 @@
 
 Native-first, dependency-free custom selects with search, multi-select, and no framework lock-in.
 
-WorseSelect keeps the native `<select>` as the source of truth and layers a custom UI on top. That means form submission, validation, disabled state, and change events still come from the real control instead of a reimplementation.
+Core keeps the native `<select>` as the source of truth and layers a custom UI on top. That means form submission, validation, disabled state, and change events still come from the real control instead of a reimplementation.
 
 ## Why use it
 
-Most custom select libraries replace the browser. WorseSelect enhances it.
+Most custom select libraries replace the browser. Core enhances it.
 
 - Keeps native form behavior intact
 - Dependency-free and small
@@ -17,11 +17,11 @@ Most custom select libraries replace the browser. WorseSelect enhances it.
 
 ## How it works
 
-WorseSelect hides the native `<select>` and renders a companion UI next to it. User interaction updates the native element, and the custom UI syncs from that canonical state. That keeps integration predictable because your app still deals with a real form control.
+Core hides the native `<select>` and renders a companion UI next to it. User interaction updates the native element, and the custom UI syncs from that canonical state. That keeps integration predictable because your app still deals with a real form control.
 
 Options are linked to rendered elements internally, and a `MutationObserver` can keep the UI in sync when options are added, removed, or updated dynamically. That makes the library a good fit for applications that render or change the DOM after initial page load.
 
-When search is enabled, WorseSelect highlights matching options and scrolls the first match into view. It does not try to turn the control into a remote-search or virtualized combobox system.
+When search is enabled, Core highlights matching options and scrolls the first match into view. It does not try to turn the control into a remote-search or virtualized combobox system.
 
 ## Features
 
@@ -36,13 +36,13 @@ When search is enabled, WorseSelect highlights matching options and scrolls the 
 
 ## Status
 
-WorseSelect is suitable for early production use in applications that want a native-first custom select without a dependency-heavy abstraction layer.
+Core is suitable for early production use in applications that want a native-first custom select without a dependency-heavy abstraction layer.
 
 Keyboard interaction and ARIA state management are built in, but custom select behavior can have browser- and assistive-technology-specific edge cases. Validate the behavior in your target environments before relying on it broadly.
 
 ## Performance
 
-WorseSelect is designed to stay small and predictable rather than chase every possible feature.
+Core is designed to stay small and predictable rather than chase every possible feature.
 
 Its performance story is straightforward:
 
@@ -153,7 +153,7 @@ Call the returned cleanup function to disconnect observers and destroy mounted i
 
 ## Styling
 
-WorseSelect uses CSS custom properties for theming.
+Core uses CSS custom properties for theming.
 
 ```css
 :root {
@@ -187,7 +187,7 @@ Override only what you need.
 
 ## Philosophy
 
-WorseSelect is built around a few rules:
+Core is built around a few rules:
 
 - Native form state stays canonical
 - Standard HTML attributes stay standard

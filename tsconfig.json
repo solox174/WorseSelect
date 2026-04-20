@@ -12,6 +12,8 @@
     "sourceMap": true,
     "noEmitOnError": true
   },
-  "include": ["src/worseSelect.ts"],
+  "include": [
+    "src/worse-select/core.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
