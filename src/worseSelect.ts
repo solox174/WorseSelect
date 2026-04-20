@@ -11,7 +11,7 @@
  */
 const DEFAULT_CONFIG = {
     searchable: false,
-    dropdownHeightPx: 500,
+    dropdownHeightPx: 400,
     height: '32px',
     width: '100%'
 };
@@ -296,14 +296,6 @@ function ensureStyles() {
         display: none;
     }
 
-    .worse-select-header-label {
-        display: block;
-        width: 100%;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-    }
-
     .worse-select-container.open .worse-select-header {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 7.5L6 4.5L9 7.5' stroke='%23333333' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
@@ -415,12 +407,10 @@ function ensureStyles() {
         display: none;
     }
 
-    .worse-select-option mark {
+    .matches {
         background: var(--ws-highlight-bg);
-        color: inherit;
-        padding: 0;
-    }
-
+    } 
+    
     .worse-select-visually-hidden {
         position: absolute;
         width: 1px;
@@ -510,22 +500,6 @@ function escapeHtml(value: string) {
         .replace(/'/g, '&#39;');
 }
 
-function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function highlightOptionLabel(label: string, searchTerm: string) {
-    const escapedLabel = escapeHtml(label);
-    const trimmedSearchTerm = searchTerm.trim();
-
-    if (!trimmedSearchTerm) {
-        return escapedLabel;
-    }
-
-    const matcher = new RegExp(`(${escapeRegExp(trimmedSearchTerm)})`, 'ig');
-    return escapedLabel.replace(matcher, '<mark>$1</mark>');
-}
-
 function getOptionId(worseSelectInstance: WorseSelect, optionIndex: number) {
     return `${worseSelectInstance.instanceId}-option-${optionIndex}`;
 }
@@ -561,22 +535,19 @@ function createWorseOptionHtml(
     worseSelectInstance: WorseSelect,
     selectOption: HTMLOptionElement,
     optionIndex: number,
-    searchTerm = ''
 ) {
     const worseOptionClasses = getWorseOptionClasses(selectOption);
-    const optionLabel = selectOption.textContent ?? '';
-    const optionLabelHtml = highlightOptionLabel(optionLabel, searchTerm);
+    const optionText = selectOption.textContent ?? '';
 
     return `
     <div
         id="${getOptionId(worseSelectInstance, optionIndex)}"
         class="${worseOptionClasses}"
         data-value="${escapeHtml(selectOption.value)}"
-        data-label="${escapeHtml(optionLabel)}"
         role="option"
         aria-selected="${selectOption.selected ? 'true' : 'false'}"
         aria-disabled="${selectOption.disabled ? 'true' : 'false'}">
-        <span class="worse-select-option-label">${optionLabelHtml}</span>
+        ${escapeHtml(optionText)}
     </div>
     `;
 }
@@ -585,10 +556,9 @@ function createWorseOptionElement(
     worseSelectInstance: WorseSelect,
     selectOption: HTMLOptionElement,
     optionIndex: number,
-    searchTerm = ''
 ) {
     const worseOptionElement = document.createRange().createContextualFragment(
-        createWorseOptionHtml(worseSelectInstance, selectOption, optionIndex, searchTerm)
+        createWorseOptionHtml(worseSelectInstance, selectOption, optionIndex)
     ).firstElementChild as HTMLDivElement;
 
     linkOption(selectOption, worseOptionElement);
@@ -674,8 +644,7 @@ function createWorseSelect(worseSelectInstance: WorseSelect) {
         const worseOptionElement = createWorseOptionElement(
             worseSelectInstance,
             selectOptions[i],
-            i,
-            worseSelectInstance.searchTerm
+            i
         );
         optionsScrollerElement.appendChild(worseOptionElement);
     }
@@ -865,14 +834,9 @@ function scrollFirstVisibleMatchIntoView(worseSelectInstance: WorseSelect) {
     const optionsScrollerElement = worseSelectInstance.optionsScrollerElement;
     if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
 
-    const firstVisibleMatch = Array.from(optionsScrollerElement.querySelectorAll('.worse-select-option'))
-        .find(optionElement => {
-            return optionElement instanceof HTMLDivElement &&
-                !optionElement.classList.contains('hidden') &&
-                !!optionElement.querySelector('mark');
-        });
-
+    const firstVisibleMatch = optionsScrollerElement.querySelector('.worse-select-option.matches');
     if (!(firstVisibleMatch instanceof HTMLDivElement)) return;
+
     firstVisibleMatch.scrollIntoView({ block: 'nearest' });
 }
 
@@ -884,28 +848,25 @@ function updateSearchStatus(worseSelectInstance: WorseSelect) {
     if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
 
     const searchTerm = worseSelectInstance.searchTerm.trim();
+
     if (!searchTerm) {
         statusElement.textContent = '';
         worseSelectInstance.lastSearchStatusMessage = '';
         return;
     }
 
-    const visibleResultCount = Array.from(optionsScrollerElement.querySelectorAll('.worse-select-option'))
-        .filter(optionElement => optionElement instanceof HTMLDivElement && !optionElement.classList.contains('hidden'))
-        .length;
+    const visibleResultCount = Array.from(optionsScrollerElement.querySelectorAll('.worse-select-option.matches')).length;
 
     const nextMessage =
         visibleResultCount === 0 ? 'No results found' :
             visibleResultCount === 1 ? '1 result available' :
                 `${visibleResultCount} results available`;
 
-    if (nextMessage === worseSelectInstance.lastSearchStatusMessage) {
-        return;
-    }
+    if (nextMessage === worseSelectInstance.lastSearchStatusMessage) return;
 
     worseSelectInstance.lastSearchStatusMessage = nextMessage;
-
     statusElement.textContent = '';
+
     window.setTimeout(() => {
         if (worseSelectInstance.statusElement === statusElement) {
             statusElement.textContent = nextMessage;
@@ -920,17 +881,13 @@ function applySearchFilter(worseSelectInstance: WorseSelect) {
         const worseOptionElement = optionToDiv.get(selectOption);
         if (!(worseOptionElement instanceof HTMLDivElement)) return;
 
-        const label = selectOption.textContent ?? '';
-        const matches = !searchTerm || label.toLowerCase().includes(searchTerm);
+        const matches = searchTerm && worseOptionElement.textContent.toLowerCase().includes(searchTerm);
 
-        worseOptionElement.classList.toggle('hidden', !matches);
-
-        const labelElement = worseOptionElement.querySelector('.worse-select-option-label');
-        if (labelElement instanceof HTMLSpanElement) {
-            labelElement.innerHTML = highlightOptionLabel(label, worseSelectInstance.searchTerm);
+        if (matches) {
+            worseOptionElement.classList.add('matches');
+        } else {
+            worseOptionElement.classList.remove('matches');
         }
-
-        worseOptionElement.setAttribute('data-label', label);
     });
 
     updateSearchStatus(worseSelectInstance);
@@ -1335,8 +1292,7 @@ function handleOptionChanges(worseSelectInstance: WorseSelect) {
                     worseOptionElement = createWorseOptionElement(
                         worseSelectInstance,
                         selectOption,
-                        optionIndex,
-                        worseSelectInstance.searchTerm
+                        optionIndex
                     );
                 }
 
