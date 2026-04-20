@@ -1,18 +1,19 @@
 # worse-select
 
-A lightweight, dependency-free progressive-enhancement wrapper for native HTML `<select>` elements.
+A lightweight, dependency-free progressive enhancement for native HTML `<select>` elements.
 
-`worse-select` keeps the native `<select>` as the source of truth while rendering a custom UI layer that is easier to style, search, and extend. It is designed for projects that want better presentation without fully replacing native form semantics in their own application state.
+WorseSelect keeps the native `<select>` as the source of truth and layers a custom UI on top. That means form submission, validation, disabled state, and change events still come from the real control instead of a reimplementation.
 
-## Features
+## Why use it
 
-- Enhances existing native `<select>` elements.
-- Uses the native element as the source of truth for `value`, `disabled`, `size`, and `multiple`.
-- Supports searchable option lists with match highlighting.
-- Supports single-select dropdown mode and listbox mode via the native `size` attribute.
-- Supports multi-select behavior via the native `multiple` attribute.
-- Tracks dynamic option changes with `MutationObserver`.
-- Ships with no runtime dependencies.
+Most custom select libraries replace the browser. WorseSelect enhances it.
+
+- Keeps native form behavior intact
+- Dependency-free and small
+- Framework-agnostic by design
+- Works well with Svelte, React, Vue, and plain HTML because it enhances native `<select>` elements instead of replacing them
+- Supports dynamically added selects with optional observer-based auto-mount
+- Uses standard HTML attributes where possible
 
 ## Install
 
@@ -28,7 +29,56 @@ import { worseSelect } from 'worse-select';
 worseSelect();
 ```
 
-When called with no arguments, `worseSelect()` uses the global `document` object as its root and scans the entire document for native `<select>` elements to enhance.
+With no arguments, `worseSelect()` scans `document` and enhances every native `<select>` it finds. 
+
+## Example
+
+### Searchable single select
+
+```html
+<select data-searchable="true">
+  <option value="">Choose one</option>
+  <option value="ford">Ford</option>
+  <option value="honda">Honda</option>
+  <option value="toyota">Toyota</option>
+</select>
+```
+
+```ts
+import { worseSelect } from 'worse-select';
+
+worseSelect();
+```
+
+## How it works
+
+WorseSelect hides the native `<select>` and renders a companion UI next to it. User interaction updates the native element, and the custom UI syncs from that canonical state. That keeps integration predictable because your app still deals with a real form control.
+
+Options are linked to rendered elements internally, and a `MutationObserver` can keep the UI in sync when options are added, removed, or updated dynamically. That makes the library a good fit for applications that render or change the DOM after initial page load.
+
+## Features
+
+- Native-first state model
+- Dependency-free
+- Optional search input
+- Listbox support via native `size`
+- Multi-select support via native `multiple`
+- Dynamic DOM support with optional observer-based auto-mount
+- Theming through CSS variables
+- Cleanup support for SPA usage
+
+## Performance
+
+WorseSelect is designed to stay small and predictable rather than chase every possible feature.
+
+Its performance story is straightforward:
+
+- No runtime dependency tree to load
+- Native `<select>` remains canonical, so form state does not have to be duplicated in a separate model
+- Direct DOM enhancement works well in apps that already render standard HTML
+- Optional DOM observation is available when you need it, instead of being required for every use case
+
+For typical form UIs, the goal is low overhead and simple integration rather than aggressive abstraction. If you need virtualization, remote search, or a fully custom combobox system, this package is probably aiming at a different problem. 
 
 ## HTML examples
 
@@ -69,30 +119,30 @@ When called with no arguments, `worseSelect()` uses the global `document` object
 
 ## Configuration
 
-Custom widget settings are provided with `data-*` attributes on the native `<select>`.
+Custom widget behavior is configured with `data-*` attributes on the native `<select>`.
 
 | Attribute | Type | Default | Description |
 |---|---|---|---|
-| `data-searchable` | `true \| false` | `false` | Adds a search input above the options list. |
-| `data-dropdown-height-px` | `number` | `500` | Sets the max height of the options scroller. |
-| `data-width` | `string` | `100%` | Overrides the rendered header width. |
-| `data-height` | `string` | `32px` | Overrides the rendered header height. |
+| `data-searchable` | `true \| false` | `false` | Adds a search input above the options list |
+| `data-dropdown-height-px` | `number` | `500` | Sets the max height of the options scroller |
+| `data-width` | `string` | `100%` | Overrides the rendered header width |
+| `data-height` | `string` | `32px` | Overrides the rendered header height |
 
-### Native attributes
+## Native attributes
 
-These are intentionally **not** configured through custom widget options:
+These stay native on purpose:
 
-- `size` controls whether the widget behaves like a listbox.
-- `multiple` controls multi-select behavior.
-- `disabled` disables the control.
+- `size` controls listbox behavior
+- `multiple` controls multi-select behavior
+- `disabled` disables the control
 
-That split keeps the API aligned with standard HTML behavior.
+That split keeps the API aligned with standard HTML instead of introducing parallel widget options. 
 
 ## API
 
-### `worseSelect(root?: ParentNode): void`
+### `worseSelect(root?: ParentNode, options?: { observe?: boolean }): () => void`
 
-Enhances every native `<select>` element found under the provided root. If `root` is omitted, it defaults to `document`.
+Enhances native `<select>` elements under the given root.
 
 ```ts
 worseSelect();                 // same as worseSelect(document)
@@ -100,39 +150,56 @@ worseSelect(document);
 worseSelect(someContainerElement);
 ```
 
-Use a custom root when you want to enhance only a specific subtree instead of the full document. The function is safe to call multiple times, and a given `<select>` is mounted only once.
+To automatically enhance selects added later:
 
-## How it works
+```ts
+const cleanup = worseSelect(document, { observe: true });
+```
 
-The library hides the native `<select>` and inserts a styled DOM structure next to it. User interaction updates the native control first, and then the custom UI syncs from that canonical state. This makes the widget easier to integrate into existing forms, because change events still originate from the real form control.
-
-Options are linked to rendered elements through `WeakMap`s, and a `MutationObserver` keeps the custom UI synchronized when options are added or removed dynamically.
+Call the returned cleanup function to disconnect observers and destroy mounted instances.
 
 ## Styling
 
-The package injects a default stylesheet the first time it is mounted. If you want to customize appearance, start by overriding the generated class names in your own CSS:
+WorseSelect uses CSS custom properties for theming.
 
-- `.worse-select-container`
-- `.worse-select-header`
-- `.worse-select-options`
-- `.worse-select-options-scroller`
-- `.worse-select-option`
-- `.worse-select-search-input`
+```css
+:root {
+    --ws-border-color: #767676;
+    --ws-border-radius: 2px;
+    --ws-bg: #fff;
+    --ws-text-color: inherit;
+    --ws-disabled-bg: #f0f0f0;
+    --ws-disabled-text-color: #6d6d6d;
+    --ws-hover-bg: #e8f0fe;
+    --ws-active-bg: #eef4ff;
+    --ws-active-outline: #2563eb;
+    --ws-selected-bg: #d2e3fc;
+    --ws-selected-text-color: #174ea6;
+    --ws-focus-outline: #2563eb;
+    --ws-search-border-color: #b7b7b7;
+    --ws-divider-color: #d0d0d0;
+    --ws-highlight-bg: #fff3a3;
+    --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+```
+
+Override only what you need.
 
 ## Limitations
 
-- Keyboard navigation complete yet.
-- Runtime changes to `size` or `multiple` update state classes, but structural mode changes may still be better handled by a teardown and remount strategy.
-- This package enhances native selects; it does not attempt to emulate every browser-specific behavior.
+- This package enhances native selects; it does not try to reproduce every browser-specific select behavior
+- Runtime changes to `size` or `multiple` may be better handled with teardown and remount if the control changes mode significantly
+- It is designed to stay small and predictable rather than cover every possible custom-select feature
 
-## Development notes
+## Philosophy
 
-This package is designed around a few core principles:
+WorseSelect is built around a few rules:
 
-- Native form state stays canonical.
-- Standard HTML attributes stay standard.
-- Custom widget behavior lives in `data-*` attributes.
-- Internal implementation stays dependency-free and small.
+- Native form state stays canonical
+- Standard HTML attributes stay standard
+- Custom behavior lives in `data-*` attributes
+- Keep the code small
+- Prefer predictable behavior over feature creep
 
 ## License
 
