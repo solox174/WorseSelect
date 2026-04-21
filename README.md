@@ -28,7 +28,7 @@ That means:
 
 - Native-first state model — `<select>` stays canonical
 - Dependency-free
-- Searchable option lists with match highlighting and screen reader announcements
+- Searchable option lists with match highlighting and screen reader announcements (matches are highlighted and scrolled into view; non-matching options stay visible to preserve context)
 - Listbox mode via native `size`
 - Multi-select via native `multiple`
 - Placeholder option support via the conventional `<option value="" disabled>` pattern
