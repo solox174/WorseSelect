@@ -2,56 +2,40 @@
 
 Native-first, dependency-free custom selects with search, multi-select, and no framework lock-in.
 
-Core keeps the native `<select>` as the source of truth and layers a custom UI on top. That means form submission, validation, disabled state, and change events still come from the real control instead of a reimplementation.
+The name is intentional. In the Unix tradition of `less` (which does more than `more`), worse-select does *less* than most custom select libraries — by design. It doesn't reimplement form state, validation, or change events. It enhances the browser instead of replacing it.
 
-## Why use it
+---
 
-Most custom select libraries replace the browser. Core enhances it.
+## Why worse-select
 
-- Keeps native form behavior intact
-- Dependency-free and small
-- Framework-agnostic by design
-- Works well with Svelte, React, Vue, and plain HTML because it enhances native `<select>` elements instead of replacing them
-- Supports dynamically added selects with optional observer-based auto-mount
-- Uses standard HTML attributes where possible
+Most custom select libraries own the form control. They maintain their own value state, wire up their own change events, and require you to feed them data in a specific format. When something goes wrong, you're debugging their abstraction instead of your app.
 
-## How it works
+worse-select keeps the native `<select>` as the source of truth. It hides the native element, renders a styled companion UI next to it, and syncs from the real control. Form submission, validation, `disabled` state, and `change` events all come from the browser — not from a reimplementation.
 
-Core hides the native `<select>` and renders a companion UI next to it. User interaction updates the native element, and the custom UI syncs from that canonical state. That keeps integration predictable because your app still deals with a real form control.
+That means:
 
-Options are linked to rendered elements internally, and a `MutationObserver` can keep the UI in sync when options are added, removed, or updated dynamically. That makes the library a good fit for applications that render or change the DOM after initial page load.
+- Drop it into any form and it works with what the browser already does
+- No framework adapter needed — it enhances a standard HTML element
+- Integrates cleanly with Svelte, React, Vue, and plain HTML
+- Dynamically added selects are handled with optional observer-based auto-mount
+- Custom behavior lives in `data-*` attributes, keeping the API close to standard HTML
 
-When search is enabled, Core highlights matching options and scrolls the first match into view. It does not try to turn the control into a remote-search or virtualized combobox system.
+---
 
 ## Features
 
-- Native-first state model
+- Native-first state model — `<select>` stays canonical
 - Dependency-free
-- Searchable option lists with match highlighting
-- Listbox support via native `size`
-- Multi-select support via native `multiple`
+- Searchable option lists with match highlighting and screen reader announcements
+- Listbox mode via native `size`
+- Multi-select via native `multiple`
+- Placeholder option support via the conventional `<option value="" disabled>` pattern
 - Dynamic DOM support with optional observer-based auto-mount
-- Theming through CSS variables
-- Cleanup support for SPA usage
+- Theming through CSS custom properties
+- Full keyboard navigation with ARIA state management
+- Cleanup API for SPA usage
 
-## Status
-
-Core is suitable for early production use in applications that want a native-first custom select without a dependency-heavy abstraction layer.
-
-Keyboard interaction and ARIA state management are built in, but custom select behavior can have browser- and assistive-technology-specific edge cases. Validate the behavior in your target environments before relying on it broadly.
-
-## Performance
-
-Core is designed to stay small and predictable rather than chase every possible feature.
-
-Its performance story is straightforward:
-
-- No runtime dependency tree to load
-- Native `<select>` remains canonical, so form state does not have to be duplicated in a separate model
-- Direct DOM enhancement works well in apps that already render standard HTML
-- Optional DOM observation is available when you need it, instead of being required for every use case
-
-For typical form UIs, the goal is low overhead, predictable behavior, and simple integration.
+---
 
 ## Install
 
@@ -69,13 +53,28 @@ worseSelect();
 
 With no arguments, `worseSelect()` scans `document` and enhances every native `<select>` it finds.
 
+---
+
 ## HTML examples
+
+### Single select with placeholder
+
+```html
+<select>
+  <option value="" disabled selected>Choose one</option>
+  <option value="ford">Ford</option>
+  <option value="honda">Honda</option>
+  <option value="toyota">Toyota</option>
+</select>
+```
+
+The placeholder text is shown in the button when the dropdown is closed and cleared when it opens.
 
 ### Single select with search
 
 ```html
 <select data-searchable="true">
-  <option value="">Choose one</option>
+  <option value="" disabled selected>Choose one</option>
   <option value="ford">Ford</option>
   <option value="honda">Honda</option>
   <option value="toyota">Toyota</option>
@@ -106,54 +105,59 @@ With no arguments, `worseSelect()` scans `document` and enhances every native `<
 </select>
 ```
 
+---
+
 ## Configuration
 
 Custom widget behavior is configured with `data-*` attributes on the native `<select>`.
 
-| Attribute | Type | Default | Description                                 |
-|---|---|---|---------------------------------------------|
-| `data-searchable` | `true \| false` | `false` | Adds a search input above the options list  |
-| `data-dropdown-height-px` | `number` | `500` | Sets the max height of the options scroller |
-| `data-width` | `string` | `100%` | Overrides the rendered widget width         |
-| `data-height` | `string` | `32px` | Overrides the rendered widget height        |
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `data-searchable` | `true \| false` | `false` | Adds a search input above the options list |
+| `data-dropdown-height-px` | `number` | `400` | Sets the max height of the options scroller |
+| `data-width` | `string` | `100%` | Overrides the rendered widget width |
+| `data-height` | `string` | `32px` | Overrides the rendered widget height |
 
 ## Native attributes
 
 These stay native on purpose:
 
-- `size` controls listbox behavior
-- `multiple` controls multi-select behavior
-- `disabled` disables the control
+- `size` — triggers listbox mode
+- `multiple` — enables multi-select
+- `disabled` — disables the control
 
 That split keeps the API aligned with standard HTML instead of introducing parallel widget options.
 
+---
+
 ## API
 
-### `worseSelect()`
+### `worseSelect(root?, options?)`
 
 ```ts
 worseSelect(root?: ParentNode, options?: { observe?: boolean }): () => void
 ```
 
-Enhances native `<select>` elements under the given root.
+Enhances native `<select>` elements under the given root. Safe to call multiple times — each select is mounted at most once.
 
 ```ts
-worseSelect();                 // same as worseSelect(document)
-worseSelect(document);
-worseSelect(someContainerElement);
+worseSelect();                          // scans document
+worseSelect(someContainerElement);      // scans a subtree
 ```
 
-To automatically enhance selects added later:
+To automatically enhance selects added after the initial call:
 
 ```ts
 const cleanup = worseSelect(document, { observe: true });
 ```
 
-Call the returned cleanup function to disconnect observers and destroy mounted instances.
+The returned cleanup function disconnects observers and destroys all mounted instances under the root. Useful for SPA route teardown.
+
+---
 
 ## Styling
 
-Core uses CSS custom properties for theming.
+worse-select uses CSS custom properties for theming. Override only what you need.
 
 ```css
 :root {
@@ -163,7 +167,7 @@ Core uses CSS custom properties for theming.
     --ws-text-color: inherit;
     --ws-disabled-bg: #f0f0f0;
     --ws-disabled-text-color: #6d6d6d;
-    --ws-hover-bg: #e8f0fe;
+    --ws-hover-bg: #f1f1f1;
     --ws-active-bg: #eef4ff;
     --ws-active-outline: #2563eb;
     --ws-selected-bg: #d2e3fc;
@@ -176,24 +180,44 @@ Core uses CSS custom properties for theming.
 }
 ```
 
-Override only what you need.
+---
+
+## Accessibility
+
+Keyboard navigation and ARIA state management are built in:
+
+- Full arrow key, Home/End, Page Up/Down navigation
+- `role="listbox"` and `role="option"` with `aria-selected`, `aria-disabled`, and `aria-activedescendant`
+- `aria-expanded` on the trigger button
+- Screen reader announcements for search results via a visually-hidden live region
+
+Custom select behavior can have browser- and assistive-technology-specific edge cases. Validate in your target environments before relying on it broadly.
+
+---
 
 ## Limitations
 
-- This package enhances native selects; it does not try to reproduce every browser-specific select behavior
+- Does not support virtualization, async/remote search, or full combobox-style widgets
 - Runtime changes to `size` or `multiple` may be better handled with teardown and remount if the control changes mode significantly
-- It is designed to stay small and predictable rather than cover every possible custom-select feature
-- It is not intended to replace virtualization, async search, or full combobox-style widgets
+- Designed to stay small and predictable — not every possible custom select feature is in scope
+
+---
+
+## Status
+
+Suitable for early production use in applications that want a native-first custom select without a dependency-heavy abstraction layer.
+
+---
 
 ## Philosophy
-
-Core is built around a few rules:
 
 - Native form state stays canonical
 - Standard HTML attributes stay standard
 - Custom behavior lives in `data-*` attributes
 - Keep the code small
 - Prefer predictable behavior over feature creep
+
+---
 
 ## License
 

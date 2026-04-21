@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
@@ -14,7 +14,7 @@
     "noEmitOnError": true
   },
   "include": [
-    "src/worse-select/core.ts"
+    "src"
   ],
   "exclude": ["node_modules", "dist"]
 }

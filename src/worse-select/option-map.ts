@@ -1,3 +1,9 @@
+// Copyright (c) 2026 Kevin Matthews
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+// Two WeakMaps maintain a bidirectional link between native <option> elements and their
+// rendered widget divs. WeakMap keys allow GC to reclaim elements removed from the DOM
+// without requiring explicit cleanup on every removal path.
 const optionToDiv = new WeakMap<HTMLOptionElement, HTMLDivElement>();
 const divToOption = new WeakMap<HTMLDivElement, HTMLOptionElement>();
 

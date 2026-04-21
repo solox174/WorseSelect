@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Kevin Matthews
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import {ConfigKey, DEFAULT_CONFIG, SelectConfig} from "./internal-types";
 
 const configKeys = Object.keys(DEFAULT_CONFIG) as ConfigKey[];

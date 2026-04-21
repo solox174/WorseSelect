@@ -1,6 +1,16 @@
+// Copyright (c) 2026 Kevin Matthews
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { DEFAULT_CONFIG, WorseSelectContext } from './internal-types';
 import { isMultipleSelect, shouldUseListboxMode } from './select-helpers';
-import { linkOption } from './option-map';
+import { getWorseOptionElement, linkOption } from './option-map';
+
+export function scrollOptionIntoView(selectOption?: HTMLOptionElement) {
+    if (!selectOption) return;
+    const el = getWorseOptionElement(selectOption);
+    if (!(el instanceof HTMLDivElement)) return;
+    el.scrollIntoView({ block: 'nearest' });
+}
 
 
 function buildStyleAttribute(styleParts: string[]) {

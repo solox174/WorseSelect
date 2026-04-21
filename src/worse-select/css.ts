@@ -1,10 +1,13 @@
-import { SelectConfig} from './internal-types';
+// Copyright (c) 2026 Kevin Matthews
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
-export function createCSS(DEFAULT_CONFIG: SelectConfig) {
+import { DEFAULT_CONFIG } from './internal-types';
+
+export function createCSS() {
     return  `
     :root {
         --ws-border-color: #767676;
-        --ws-border-radius: 2px;
+        --ws-border-radius: 4px;
         --ws-bg: #fff;
         --ws-text-color: inherit;
         --ws-disabled-bg: #f0f0f0;
@@ -20,9 +23,8 @@ export function createCSS(DEFAULT_CONFIG: SelectConfig) {
         --ws-highlight-bg: #fff3a3;
         --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
     }
+    
     .worse-select-container {
-
-
         position: relative;
         display: inline-block;
         min-width: 0;
@@ -175,8 +177,8 @@ export function createCSS(DEFAULT_CONFIG: SelectConfig) {
 
     .matches {
         background: var(--ws-highlight-bg);
-    } 
-    
+    }
+
     .worse-select-visually-hidden {
         position: absolute;
         width: 1px;
