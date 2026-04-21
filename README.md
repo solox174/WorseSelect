@@ -223,4 +223,4 @@ Suitable for early production use in applications that want a native-first custo
 
 ## License
 
-AGPL-3.0-or-later
+LGPL-3.0-or-later
