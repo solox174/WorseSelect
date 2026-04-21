@@ -13,6 +13,6 @@ export function isMultipleSelect(worseSelectInstance: WorseSelectContext) {
 
 // Matches the conventional HTML placeholder pattern: <option value="" disabled>Label</option>.
 // Options that are not disabled or have a non-empty value are treated as selectable.
-export function isPlaceholderOption(selectOption: HTMLOptionElement) {
-    return selectOption.value === '' && selectOption.disabled;
+export function isPlaceholderOption(selectOption: HTMLOptionElement | null): boolean {
+    return selectOption !== null && selectOption.value === '' && selectOption.disabled;
 }

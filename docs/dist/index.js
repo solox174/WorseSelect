@@ -232,7 +232,7 @@ function isMultipleSelect(worseSelectInstance) {
   return worseSelectInstance.selectElement.multiple;
 }
 function isPlaceholderOption(selectOption) {
-  return selectOption.value === "" && selectOption.disabled;
+  return selectOption !== null && selectOption.value === "" && selectOption.disabled;
 }
 
 // src/worse-select/option-map.ts
