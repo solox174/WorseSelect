@@ -1,5 +1,7 @@
-import {DEFAULT_CONFIG} from "./internal-types";
-import { WorseSelectContext } from './internal-types'
+import { DEFAULT_CONFIG, WorseSelectContext } from './internal-types';
+import { isMultipleSelect, shouldUseListboxMode } from './select-helpers';
+import { linkOption } from './option-map';
+
 
 function buildStyleAttribute(styleParts: string[]) {
     return styleParts.length > 0 ? ` style="${styleParts.join(' ')}"` : '';
@@ -19,9 +21,6 @@ export function buildWorseSelectHeaderStyleAttribute(worseSelectInstance: WorseS
     return buildStyleAttribute(headerStyleParts);
 }
 
-export function isPlaceholderOption(selectOption: HTMLOptionElement) {
-    return selectOption.value === '' && selectOption.disabled;
-}
 
 function escapeHtml(value: string) {
     return value
@@ -35,7 +34,6 @@ function escapeHtml(value: string) {
 export function getOptionId(worseSelectInstance: WorseSelectContext, optionIndex: number) {
     return `${worseSelectInstance.instanceId}-option-${optionIndex}`;
 }
-
 
 function getWorseOptionClasses(selectOption: HTMLOptionElement) {
     const classes = ['worse-select-option'];
@@ -60,14 +58,13 @@ export function createWorseOptionHtml(
     const optionText = selectOption.textContent ?? '';
 
     return `
-    <div
-        id="${getOptionId(worseSelectInstance, optionIndex)}"
-        class="${worseOptionClasses}"
-        data-value="${escapeHtml(selectOption.value)}"
-        role="option"
-        aria-selected="${selectOption.selected ? 'true' : 'false'}"
-        aria-disabled="${selectOption.disabled ? 'true' : 'false'}">
-        ${escapeHtml(optionText)}
+    <div id="${getOptionId(worseSelectInstance, optionIndex)}"
+         class="${worseOptionClasses}"
+         data-value="${escapeHtml(selectOption.value)}"
+         role="option"
+         aria-selected="${selectOption.selected ? 'true' : 'false'}"
+         aria-disabled="${selectOption.disabled ? 'true' : 'false'}">
+      ${escapeHtml(optionText)}
     </div>
     `;
 }
@@ -82,21 +79,19 @@ export function createWorseOptionElement(
     ).firstElementChild as HTMLDivElement;
 }
 
-
 export function createSearchHtml(worseSelectInstance: WorseSelectContext) {
     if (!worseSelectInstance.config.searchable) {
         return '';
     }
 
     return `
-      <div class="worse-select-search">
-        <input
-            type="text"
-            class="worse-select-search-input"
-            placeholder="Search list"
-            autocomplete="off"
-            aria-label="Search options" />
-      </div>
+    <div class="worse-select-search">
+      <input type="text"
+             class="worse-select-search-input"
+             placeholder="Search list"
+             autocomplete="off"
+             aria-label="Search options" />
+    </div>
     `;
 }
 
@@ -106,10 +101,66 @@ export function createStatusHtml(worseSelectInstance: WorseSelectContext) {
     }
 
     return `
-      <div
-        class="worse-select-status worse-select-visually-hidden"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"></div>
+    <div class="worse-select-status worse-select-visually-hidden" 
+         role="status"
+         aria-live="polite"
+         aria-atomic="true"></div>
     `;
+}
+
+export function createWorseSelect(worseSelectInstance: WorseSelectContext) {
+    const headerStyleAttribute = buildWorseSelectHeaderStyleAttribute(worseSelectInstance);
+    const containerClasses = ['worse-select-container'];
+
+    if (shouldUseListboxMode(worseSelectInstance)) {
+        containerClasses.push('listbox');
+    }
+
+    if (isMultipleSelect(worseSelectInstance)) {
+        containerClasses.push('multiple');
+    }
+
+    const htmlString = `
+    <div class="${containerClasses.join(' ')}">
+      <button
+        type="button"
+        class="worse-select-header"
+        aria-haspopup="listbox"
+        aria-expanded="false">
+        <span class="worse-select-header-label"></span>
+      </button>
+      <div class="worse-select-options">
+        ${createSearchHtml(worseSelectInstance)}
+        ${createStatusHtml(worseSelectInstance)}
+        <div class="worse-select-options-scroller"${headerStyleAttribute}></div>
+      </div>
+    </div>
+    `;
+
+    const worseSelectElement = document.createRange().createContextualFragment(
+        htmlString
+    ).firstElementChild as HTMLDivElement;
+
+    const optionsScrollerElement = worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement;
+    optionsScrollerElement.setAttribute('role', 'listbox');
+    optionsScrollerElement.tabIndex = shouldUseListboxMode(worseSelectInstance) ? 0 : -1;
+
+    if (isMultipleSelect(worseSelectInstance)) {
+        optionsScrollerElement.setAttribute('aria-multiselectable', 'true');
+    }
+
+    const selectOptions = Array.from(worseSelectInstance.selectElement.options);
+
+    for (let i = 0; i < selectOptions.length; i++) {
+        const selectOption = selectOptions[i];
+        const worseOptionElement = createWorseOptionElement(
+            worseSelectInstance,
+            selectOption,
+            i
+        );
+        linkOption(selectOption, worseOptionElement);
+        optionsScrollerElement.appendChild(worseOptionElement);
+    }
+
+    return worseSelectElement;
 }
