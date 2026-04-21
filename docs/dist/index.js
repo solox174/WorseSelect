@@ -525,9 +525,6 @@ var _WorseSelect = class _WorseSelect {
     if (computedStyle.width && computedStyle.width !== "auto" && computedStyle.width !== "0px") {
       worseSelectElement.style.width = computedStyle.width;
     }
-    if (computedStyle.height && computedStyle.height !== "auto" && computedStyle.height !== "0px") {
-      headerElement.style.height = computedStyle.height;
-    }
     headerElement.style.font = computedStyle.font;
     optionsScrollerElement.style.maxHeight = `${config.dropdownHeightPx}px`;
   }
