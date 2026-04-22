@@ -1,6 +1,6 @@
 # worse-select
 
-Native-first, dependency-free custom selects with search, multi-select, and no framework lock-in.
+Native-first, dependency-free custom selects with search, multi-select, a plugin API, and no framework lock-in.
 
 **[Live demo](https://solox174.github.io/WorseSelect/)**
 
@@ -35,6 +35,7 @@ That means:
 - Dynamic DOM support with optional observer-based auto-mount
 - Theming through CSS custom properties
 - Full keyboard navigation with ARIA state management
+- Plugin API for extending or replacing built-in behavior
 - Cleanup API for SPA usage
 
 ---
@@ -137,7 +138,10 @@ That split keeps the API aligned with standard HTML instead of introducing paral
 ### `worseSelect(root?, options?)`
 
 ```ts
-worseSelect(root?: ParentNode, options?: { observe?: boolean }): () => void
+import { worseSelect } from 'worse-select';
+import type { Plugin, PluginContext } from 'worse-select';
+
+worseSelect(root?: ParentNode, options?: { observe?: boolean; plugins?: Plugin[] }): () => void
 ```
 
 Enhances native `<select>` elements under the given root. Safe to call multiple times — each select is mounted at most once.
@@ -154,6 +158,97 @@ const cleanup = worseSelect(document, { observe: true });
 ```
 
 The returned cleanup function disconnects observers and destroys all mounted instances under the root. Useful for SPA route teardown.
+
+---
+
+## Plugins
+
+The plugin API is how you extend worse-select with custom behavior. It is also how worse-select grows — the built-in search is itself a plugin, and new first-party features will be added the same way. That means the API gets the same level of care as everything else in the library.
+
+A plugin is a factory function that returns a `Plugin` object:
+
+```ts
+import { worseSelect } from 'worse-select';
+import type { Plugin, PluginContext } from 'worse-select';
+
+function createMyPlugin(): Plugin {
+    return {
+        name: 'my-plugin',
+        init(context: PluginContext) {
+            // use context.on() so event listeners are removed automatically on destroy
+            context.on(context.headerElement, 'click', () => { /* ... */ });
+        },
+        onOpen() { /* dropdown opened */ },
+        onClose() { /* dropdown closed */ },
+        onSync() { /* native select state changed */ },
+        destroy() { /* instance torn down */ },
+    };
+}
+
+worseSelect(document, {
+    plugins: [createMyPlugin()]
+});
+```
+
+`PluginContext` gives access to the widget elements and a small utility API:
+
+| Property / Method | Description |
+|---|---|
+| `selectElement` | The native `<select>` |
+| `headerElement` | The trigger button |
+| `optionsListElement` | The options scroller |
+| `searchInputElement` | The search input, if `data-searchable="true"` |
+| `setMessage(text)` | Posts a message to the visually-hidden live region for screen readers |
+| `clearMessage()` | Clears the live region |
+| `on(target, event, handler)` | Registers an event listener that is removed automatically when the instance is destroyed |
+
+### Example: remote search
+
+The built-in search highlights matching options client-side. To replace it with server-side filtering, provide a plugin named `'search'` — worse-select skips the built-in when a plugin with that name is already registered.
+
+Replacing native `<option>` elements triggers worse-select's mutation observer, which rebuilds the option list automatically.
+
+```ts
+function createRemoteSearchPlugin(url: string): Plugin {
+    return {
+        name: 'search', // overrides the built-in search plugin
+        init(context) {
+            const { searchInputElement, selectElement } = context;
+            if (!searchInputElement) return;
+
+            let debounce: ReturnType<typeof setTimeout>;
+
+            context.on(searchInputElement, 'input', (event) => {
+                const term = (event.target as HTMLInputElement).value.trim();
+                clearTimeout(debounce);
+
+                if (!term) {
+                    selectElement.innerHTML = '';
+                    context.clearMessage();
+                    return;
+                }
+
+                debounce = setTimeout(async () => {
+                    context.setMessage('Loading...');
+
+                    const res = await fetch(`${url}?q=${encodeURIComponent(term)}`);
+                    const items: { value: string; label: string }[] = await res.json();
+
+                    selectElement.innerHTML = items
+                        .map(({ value, label }) => `<option value="${value}">${label}</option>`)
+                        .join('');
+
+                    context.setMessage(items.length ? `${items.length} results` : 'No results found');
+                }, 300);
+            });
+        },
+    };
+}
+
+worseSelect(document.querySelector('#my-form')!, {
+    plugins: [createRemoteSearchPlugin('/api/search')]
+});
+```
 
 ---
 
@@ -199,7 +294,7 @@ Custom select behavior can have browser- and assistive-technology-specific edge 
 
 ## Limitations
 
-- Does not support virtualization, async/remote search, or full combobox-style widgets
+- Does not support virtualization or full combobox-style widgets out of the box — async/remote search can be built with a custom plugin (see Plugins)
 - Runtime changes to `size` or `multiple` may be better handled with teardown and remount if the control changes mode significantly
 - Designed to stay small and predictable — not every possible custom select feature is in scope
 

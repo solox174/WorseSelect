@@ -8,7 +8,9 @@ var DEFAULT_CONFIG = {
 
 // src/worse-select/css.ts
 function createCSS() {
-  return `
+  return (
+    /* language=CSS */
+    `
     :root {
         --ws-border-color: #767676;
         --ws-border-radius: 4px;
@@ -84,7 +86,7 @@ function createCSS() {
     
     .worse-select-header:focus-visible,
     .worse-select-search-input:focus-visible {
-        outline: 2px solid var(--ws-focus-outline);
+        outline: 2px solid var(--ws-focus-outline) !important;
         outline-offset: 1px;
     }
 
@@ -175,9 +177,6 @@ function createCSS() {
         background: var(--ws-disabled-bg);
     }
 
-    .worse-select-option.disabled:hover {
-        background: transparent;
-    }
 
     .worse-select-option.hidden {
         display: none;
@@ -198,7 +197,8 @@ function createCSS() {
         white-space: nowrap;
         border: 0;
     }
-    `;
+    `
+  );
 }
 
 // src/worse-select/config.ts
@@ -328,12 +328,9 @@ function createSearchHtml(worseSelectInstance) {
     </div>
     `;
 }
-function createStatusHtml(worseSelectInstance) {
-  if (!worseSelectInstance.config.searchable) {
-    return "";
-  }
+function createMessageHtml() {
   return `
-    <div class="worse-select-status worse-select-visually-hidden" 
+    <div class="worse-select-message worse-select-visually-hidden"
          role="status"
          aria-live="polite"
          aria-atomic="true"></div>
@@ -359,7 +356,7 @@ function createWorseSelect(worseSelectInstance) {
       </button>
       <div class="worse-select-options">
         ${createSearchHtml(worseSelectInstance)}
-        ${createStatusHtml(worseSelectInstance)}
+        ${createMessageHtml()}
         <div class="worse-select-options-scroller"${headerStyleAttribute}></div>
       </div>
     </div>
@@ -367,11 +364,11 @@ function createWorseSelect(worseSelectInstance) {
   const worseSelectElement = document.createRange().createContextualFragment(
     htmlString
   ).firstElementChild;
-  const optionsScrollerElement = worseSelectElement.querySelector(".worse-select-options-scroller");
-  optionsScrollerElement.setAttribute("role", "listbox");
-  optionsScrollerElement.tabIndex = shouldUseListboxMode(worseSelectInstance) ? 0 : -1;
+  const optionsListElement = worseSelectElement.querySelector(".worse-select-options-scroller");
+  optionsListElement.setAttribute("role", "listbox");
+  optionsListElement.tabIndex = shouldUseListboxMode(worseSelectInstance) ? 0 : -1;
   if (isMultipleSelect(worseSelectInstance)) {
-    optionsScrollerElement.setAttribute("aria-multiselectable", "true");
+    optionsListElement.setAttribute("aria-multiselectable", "true");
   }
   const selectOptions = Array.from(worseSelectInstance.selectElement.options);
   for (let i = 0; i < selectOptions.length; i++) {
@@ -382,66 +379,84 @@ function createWorseSelect(worseSelectInstance) {
       i
     );
     linkOption(selectOption, worseOptionElement);
-    optionsScrollerElement.appendChild(worseOptionElement);
+    optionsListElement.appendChild(worseOptionElement);
   }
   return worseSelectElement;
 }
 
 // src/worse-select/features/search.ts
-function scrollFirstVisibleMatchIntoView(context) {
-  const { optionsScrollerElement } = context;
-  if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
-  const firstMatch = optionsScrollerElement.querySelector(".worse-select-option.matches");
-  if (!(firstMatch instanceof HTMLDivElement)) return;
-  firstMatch.scrollIntoView({ block: "nearest" });
-}
-function updateSearchStatus(context) {
-  const { statusElement, optionsScrollerElement } = context;
-  if (!(statusElement instanceof HTMLDivElement)) return;
-  if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
-  const searchTerm = context.searchTerm.trim();
-  if (!searchTerm) {
-    statusElement.textContent = "";
-    context.lastSearchStatusMessage = "";
+function applyFilter(context, searchTerm) {
+  const term = searchTerm.trim().toLowerCase();
+  Array.from(context.selectElement.options).forEach((selectOption) => {
+    const el = getWorseOptionElement(selectOption);
+    if (!(el instanceof HTMLDivElement)) return;
+    const matches = term !== "" && el.textContent.toLowerCase().includes(term);
+    el.classList.toggle("matches", matches);
+  });
+  if (!term) {
+    context.clearMessage();
     return;
   }
-  const visibleResultCount = Array.from(
-    optionsScrollerElement.querySelectorAll(".worse-select-option.matches")
-  ).length;
-  const nextMessage = visibleResultCount === 0 ? "No results found" : visibleResultCount === 1 ? "1 result available" : `${visibleResultCount} results available`;
-  if (nextMessage === context.lastSearchStatusMessage) return;
-  context.lastSearchStatusMessage = nextMessage;
-  statusElement.textContent = "";
-  window.setTimeout(() => {
-    if (context.statusElement === statusElement) {
-      statusElement.textContent = nextMessage;
-    }
-  }, 0);
+  const matchCount = context.optionsListElement.querySelectorAll(".worse-select-option.matches").length;
+  const message = matchCount === 0 ? "No results found" : matchCount === 1 ? "1 result available" : `${matchCount} results available`;
+  context.setMessage(message);
+  const firstMatch = context.optionsListElement.querySelector(".worse-select-option.matches");
+  if (firstMatch instanceof HTMLDivElement) {
+    firstMatch.scrollIntoView({ block: "nearest" });
+  }
 }
-function applySearchFilter(context) {
-  const searchTerm = context.searchTerm.trim().toLowerCase();
-  Array.from(context.selectElement.options).forEach((selectOption) => {
-    const worseOptionElement = getWorseOptionElement(selectOption);
-    if (!(worseOptionElement instanceof HTMLDivElement)) return;
-    const matches = searchTerm !== "" && worseOptionElement.textContent.toLowerCase().includes(searchTerm);
-    worseOptionElement.classList.toggle("matches", matches);
-  });
-  updateSearchStatus(context);
-  scrollFirstVisibleMatchIntoView(context);
+function createBuiltinSearchPlugin() {
+  let searchTerm = "";
+  let pluginContext = null;
+  return {
+    name: "search",
+    init(context) {
+      pluginContext = context;
+      const { searchInputElement } = context;
+      if (!searchInputElement) return;
+      context.on(searchInputElement, "input", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        searchTerm = target.value;
+        applyFilter(context, searchTerm);
+      });
+    },
+    onSync() {
+      if (!pluginContext) return;
+      applyFilter(pluginContext, searchTerm);
+    },
+    onClose() {
+      if (!pluginContext) return;
+      searchTerm = "";
+      const { searchInputElement } = pluginContext;
+      if (searchInputElement instanceof HTMLInputElement) {
+        searchInputElement.value = "";
+      }
+      applyFilter(pluginContext, "");
+    },
+    destroy() {
+      pluginContext = null;
+      searchTerm = "";
+    }
+  };
 }
 
 // src/worse-select/core.ts
 var instances = /* @__PURE__ */ new WeakMap();
 var nextInstanceId = 0;
 var _WorseSelect = class _WorseSelect {
-  constructor(selectElement, config = {}, root = document) {
+  constructor(selectElement, config = {}, root = document, plugins = []) {
     this.open = false;
-    this.searchTerm = "";
-    this.lastSearchStatusMessage = "";
+    this.plugins = [];
+    this.pluginListeners = [];
     this.selectElement = selectElement;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.root = root;
     this.instanceId = `ws-${++nextInstanceId}`;
+    this.plugins = [...plugins];
+    if (this.config.searchable && !plugins.some((p) => p.name === "search")) {
+      this.plugins.push(createBuiltinSearchPlugin());
+    }
   }
   static handleDocumentPointerDown(event) {
     const target = event.target;
@@ -458,10 +473,10 @@ var _WorseSelect = class _WorseSelect {
     ensureStyles();
     this.worseSelectElement = createWorseSelect(this);
     this.headerElement = this.worseSelectElement.querySelector(".worse-select-header");
-    this.optionsWrapperElement = this.worseSelectElement.querySelector(".worse-select-options");
-    this.optionsScrollerElement = this.worseSelectElement.querySelector(".worse-select-options-scroller");
+    this.dropdownPanelElement = this.worseSelectElement.querySelector(".worse-select-options");
+    this.optionsListElement = this.worseSelectElement.querySelector(".worse-select-options-scroller");
     this.searchInputElement = this.worseSelectElement.querySelector(".worse-select-search-input");
-    this.statusElement = this.worseSelectElement.querySelector(".worse-select-status");
+    this.messageElement = this.worseSelectElement.querySelector(".worse-select-message");
     if (_WorseSelect.mountedInstances.size === 0) {
       document.addEventListener("pointerdown", _WorseSelect.handleDocumentPointerDown);
     }
@@ -469,16 +484,25 @@ var _WorseSelect = class _WorseSelect {
     this.bindEvents();
     this.observeOptions();
     this.render();
+    this.initPlugins();
   }
   destroy() {
     this.optionObserver?.disconnect();
     this.optionObserver = void 0;
+    for (const plugin of this.plugins) {
+      plugin.destroy?.();
+    }
+    for (const { target, event, handler } of this.pluginListeners) {
+      target.removeEventListener(event, handler);
+    }
+    this.pluginListeners = [];
+    this.plugins = [];
     if (this.onSelectChange) {
       this.selectElement.removeEventListener("change", this.onSelectChange);
       this.onSelectChange = void 0;
     }
-    if (this.onOptionsClick && this.optionsWrapperElement) {
-      this.optionsWrapperElement.removeEventListener("click", this.onOptionsClick);
+    if (this.onOptionsClick && this.dropdownPanelElement) {
+      this.dropdownPanelElement.removeEventListener("click", this.onOptionsClick);
       this.onOptionsClick = void 0;
     }
     if (this.onHeaderClick && this.headerElement) {
@@ -489,48 +513,42 @@ var _WorseSelect = class _WorseSelect {
       this.headerElement.removeEventListener("keydown", this.onHeaderKeyDown);
       this.onHeaderKeyDown = void 0;
     }
-    if (this.onOptionsKeyDown && this.optionsScrollerElement) {
-      this.optionsScrollerElement.removeEventListener("keydown", this.onOptionsKeyDown);
+    if (this.onOptionsKeyDown && this.optionsListElement) {
+      this.optionsListElement.removeEventListener("keydown", this.onOptionsKeyDown);
       this.onOptionsKeyDown = void 0;
-    }
-    _WorseSelect.mountedInstances.delete(this);
-    if (_WorseSelect.mountedInstances.size === 0) {
-      document.removeEventListener("pointerdown", _WorseSelect.handleDocumentPointerDown);
-    }
-    if (this.onSearchInput && this.searchInputElement) {
-      this.searchInputElement.removeEventListener("input", this.onSearchInput);
-      this.onSearchInput = void 0;
     }
     if (this.onSearchKeyDown && this.searchInputElement) {
       this.searchInputElement.removeEventListener("keydown", this.onSearchKeyDown);
       this.onSearchKeyDown = void 0;
+    }
+    _WorseSelect.mountedInstances.delete(this);
+    if (_WorseSelect.mountedInstances.size === 0) {
+      document.removeEventListener("pointerdown", _WorseSelect.handleDocumentPointerDown);
     }
     Array.from(this.selectElement.options).forEach(unlinkOption);
     this.worseSelectElement?.remove();
     this.selectElement.style.display = "";
     this.worseSelectElement = void 0;
     this.headerElement = void 0;
-    this.optionsWrapperElement = void 0;
-    this.optionsScrollerElement = void 0;
+    this.dropdownPanelElement = void 0;
+    this.optionsListElement = void 0;
     this.searchInputElement = void 0;
-    this.statusElement = void 0;
+    this.messageElement = void 0;
     this.open = false;
-    this.searchTerm = "";
-    this.lastSearchStatusMessage = "";
     this.activeOption = void 0;
   }
   // --- State sync ---
   syncDimensions() {
-    const { worseSelectElement, headerElement, optionsScrollerElement, selectElement, config } = this;
+    const { worseSelectElement, headerElement, optionsListElement, selectElement, config } = this;
     if (!(worseSelectElement instanceof HTMLDivElement)) return;
     if (!(headerElement instanceof HTMLButtonElement)) return;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
     const computedStyle = window.getComputedStyle(selectElement);
     if (computedStyle.width && computedStyle.width !== "auto" && computedStyle.width !== "0px") {
       worseSelectElement.style.width = computedStyle.width;
     }
     headerElement.style.font = computedStyle.font;
-    optionsScrollerElement.style.maxHeight = `${config.dropdownHeightPx}px`;
+    optionsListElement.style.maxHeight = `${config.dropdownHeightPx}px`;
   }
   updateOpenState() {
     if (!(this.worseSelectElement instanceof HTMLDivElement)) return;
@@ -542,16 +560,16 @@ var _WorseSelect = class _WorseSelect {
     if (this.headerElement instanceof HTMLButtonElement) {
       this.headerElement.setAttribute("aria-expanded", String(isOpen));
     }
-    if (this.optionsScrollerElement instanceof HTMLDivElement) {
-      this.optionsScrollerElement.setAttribute("aria-multiselectable", String(isMultipleSelect(this)));
-      this.optionsScrollerElement.tabIndex = isOpen ? 0 : -1;
+    if (this.optionsListElement instanceof HTMLDivElement) {
+      this.optionsListElement.setAttribute("aria-multiselectable", String(isMultipleSelect(this)));
+      this.optionsListElement.tabIndex = isOpen ? 0 : -1;
     }
     this.updateHeaderState();
   }
   updateSelectedState() {
-    const { optionsScrollerElement, selectElement } = this;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
-    Array.from(optionsScrollerElement.children).forEach((el) => {
+    const { optionsListElement, selectElement } = this;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
+    Array.from(optionsListElement.children).forEach((el) => {
       if (!(el instanceof HTMLDivElement)) return;
       el.classList.remove("selected");
       el.setAttribute("aria-selected", "false");
@@ -593,23 +611,23 @@ var _WorseSelect = class _WorseSelect {
     headerElement.setAttribute("aria-label", label ? `Selected: ${label}` : "Select an option");
   }
   updateActiveDescendant() {
-    const { optionsScrollerElement, activeOption } = this;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+    const { optionsListElement, activeOption } = this;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
     if (!activeOption) {
-      optionsScrollerElement.removeAttribute("aria-activedescendant");
+      optionsListElement.removeAttribute("aria-activedescendant");
       return;
     }
     const el = getWorseOptionElement(activeOption);
     if (!(el instanceof HTMLDivElement)) {
-      optionsScrollerElement.removeAttribute("aria-activedescendant");
+      optionsListElement.removeAttribute("aria-activedescendant");
       return;
     }
-    optionsScrollerElement.setAttribute("aria-activedescendant", el.id);
+    optionsListElement.setAttribute("aria-activedescendant", el.id);
   }
   updateActiveOptionState() {
-    const { optionsScrollerElement, activeOption } = this;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
-    Array.from(optionsScrollerElement.children).forEach((el) => {
+    const { optionsListElement, activeOption } = this;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
+    Array.from(optionsListElement.children).forEach((el) => {
       if (el instanceof HTMLDivElement) el.classList.remove("active");
     });
     if (activeOption) {
@@ -621,7 +639,24 @@ var _WorseSelect = class _WorseSelect {
     this.updateDisabledState();
     this.updateOpenState();
     this.syncDimensions();
-    applySearchFilter(this);
+    for (const plugin of this.plugins) {
+      plugin.onSync?.();
+    }
+  }
+  // --- Message ---
+  setMessage(text) {
+    const { messageElement } = this;
+    if (!(messageElement instanceof HTMLDivElement)) return;
+    messageElement.textContent = "";
+    window.setTimeout(() => {
+      if (this.messageElement === messageElement) {
+        messageElement.textContent = text;
+      }
+    }, 0);
+  }
+  clearMessage() {
+    if (!(this.messageElement instanceof HTMLDivElement)) return;
+    this.messageElement.textContent = "";
   }
   // --- Open / close ---
   openDropdown() {
@@ -629,16 +664,17 @@ var _WorseSelect = class _WorseSelect {
     if (shouldUseListboxMode(this)) return;
     this.open = true;
     this.updateOpenState();
+    for (const plugin of this.plugins) {
+      plugin.onOpen?.();
+    }
   }
   closeDropdown() {
     if (shouldUseListboxMode(this)) return;
     if (!this.open) return;
-    this.searchTerm = "";
     this.open = false;
-    if (this.searchInputElement instanceof HTMLInputElement) {
-      this.searchInputElement.value = "";
+    for (const plugin of this.plugins) {
+      plugin.onClose?.();
     }
-    applySearchFilter(this);
     this.updateOpenState();
   }
   toggleDropdown() {
@@ -647,10 +683,10 @@ var _WorseSelect = class _WorseSelect {
   }
   openDropdownAndFocusList() {
     this.openDropdown();
-    const { optionsScrollerElement } = this;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
-    optionsScrollerElement.tabIndex = 0;
-    optionsScrollerElement.focus();
+    const { optionsListElement } = this;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
+    optionsListElement.tabIndex = 0;
+    optionsListElement.focus();
     scrollOptionIntoView(this.activeOption);
   }
   closeDropdownAndFocusHeader() {
@@ -683,12 +719,12 @@ var _WorseSelect = class _WorseSelect {
     this.setActiveOption(boundary === "start" ? options[0] : options[options.length - 1]);
   }
   getPageJumpSize() {
-    const { optionsScrollerElement } = this;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return 10;
-    const firstOption = Array.from(optionsScrollerElement.querySelectorAll(".worse-select-option")).find((el) => el instanceof HTMLDivElement);
+    const { optionsListElement } = this;
+    if (!(optionsListElement instanceof HTMLDivElement)) return 10;
+    const firstOption = Array.from(optionsListElement.querySelectorAll(".worse-select-option")).find((el) => el instanceof HTMLDivElement);
     if (!(firstOption instanceof HTMLDivElement)) return 10;
     const optionHeight = firstOption.offsetHeight || 1;
-    return Math.max(1, Math.floor(optionsScrollerElement.clientHeight / optionHeight));
+    return Math.max(1, Math.floor(optionsListElement.clientHeight / optionHeight));
   }
   moveActiveByPage(direction) {
     this.moveActiveOption(this.getPageJumpSize() * direction);
@@ -704,21 +740,40 @@ var _WorseSelect = class _WorseSelect {
     selectElement.dispatchEvent(new Event("change", { bubbles: true }));
   }
   // --- Internal wiring ---
+  initPlugins() {
+    if (!(this.headerElement instanceof HTMLButtonElement)) return;
+    if (!(this.optionsListElement instanceof HTMLDivElement)) return;
+    const context = {
+      selectElement: this.selectElement,
+      headerElement: this.headerElement,
+      optionsListElement: this.optionsListElement,
+      searchInputElement: this.searchInputElement,
+      setMessage: (text) => this.setMessage(text),
+      clearMessage: () => this.clearMessage(),
+      on: (target, event, handler) => {
+        target.addEventListener(event, handler);
+        this.pluginListeners.push({ target, event, handler });
+      }
+    };
+    for (const plugin of this.plugins) {
+      plugin.init(context);
+    }
+  }
   // Keyboard contracts for header, list, and search are kept together here — splitting them
   // would scatter related key handling across multiple methods. If this grows significantly,
   // consider breaking out per-component handlers.
   bindEvents() {
-    const { worseSelectElement, selectElement, optionsWrapperElement, optionsScrollerElement, headerElement, searchInputElement } = this;
+    const { worseSelectElement, selectElement, dropdownPanelElement, optionsListElement, headerElement, searchInputElement } = this;
     if (!(worseSelectElement instanceof HTMLDivElement)) return;
-    if (!(optionsWrapperElement instanceof HTMLDivElement)) return;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+    if (!(dropdownPanelElement instanceof HTMLDivElement)) return;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
     if (!(headerElement instanceof HTMLButtonElement)) return;
     const onOptionsClick = (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
       const optionEl = target.closest(".worse-select-option");
       if (!(optionEl instanceof HTMLDivElement)) return;
-      if (!optionsWrapperElement.contains(optionEl)) return;
+      if (!dropdownPanelElement.contains(optionEl)) return;
       if (optionEl.classList.contains("disabled")) return;
       const selectOption = getSelectOptionElement(optionEl);
       if (!selectOption || selectOption.disabled) return;
@@ -812,43 +867,37 @@ var _WorseSelect = class _WorseSelect {
           break;
       }
     };
-    const onSearchInput = (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      this.searchTerm = target.value;
-      applySearchFilter(this);
-    };
     const onSearchKeyDown = (event) => {
       if (!(event instanceof KeyboardEvent)) return;
       switch (event.key) {
         case "ArrowDown":
           event.preventDefault();
-          optionsScrollerElement.focus();
+          optionsListElement.focus();
           this.moveActiveOption(1);
           break;
         case "ArrowUp":
           event.preventDefault();
-          optionsScrollerElement.focus();
+          optionsListElement.focus();
           this.moveActiveOption(-1);
           break;
         case "Home":
           event.preventDefault();
-          optionsScrollerElement.focus();
+          optionsListElement.focus();
           this.moveActiveToBoundary("start");
           break;
         case "End":
           event.preventDefault();
-          optionsScrollerElement.focus();
+          optionsListElement.focus();
           this.moveActiveToBoundary("end");
           break;
         case "PageDown":
           event.preventDefault();
-          optionsScrollerElement.focus();
+          optionsListElement.focus();
           this.moveActiveByPage(1);
           break;
         case "PageUp":
           event.preventDefault();
-          optionsScrollerElement.focus();
+          optionsListElement.focus();
           this.moveActiveByPage(-1);
           break;
         case "Escape":
@@ -857,15 +906,13 @@ var _WorseSelect = class _WorseSelect {
           break;
       }
     };
-    optionsWrapperElement.addEventListener("click", onOptionsClick);
+    dropdownPanelElement.addEventListener("click", onOptionsClick);
     selectElement.addEventListener("change", onSelectChange);
     headerElement.addEventListener("click", onHeaderClick);
     headerElement.addEventListener("keydown", onHeaderKeyDown);
-    optionsScrollerElement.addEventListener("keydown", onOptionsKeyDown);
+    optionsListElement.addEventListener("keydown", onOptionsKeyDown);
     if (searchInputElement instanceof HTMLInputElement) {
-      searchInputElement.addEventListener("input", onSearchInput);
       searchInputElement.addEventListener("keydown", onSearchKeyDown);
-      this.onSearchInput = onSearchInput;
       this.onSearchKeyDown = onSearchKeyDown;
     }
     this.onOptionsClick = onOptionsClick;
@@ -879,8 +926,8 @@ var _WorseSelect = class _WorseSelect {
   // other and the scroller's child order. If this grows (e.g. option groups, reordering
   // animations), extract into a dedicated reconciler.
   observeOptions() {
-    const { selectElement, optionsScrollerElement } = this;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+    const { selectElement, optionsListElement } = this;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
     const observer = new MutationObserver((mutationList) => {
       let shouldRebuild = false;
       let shouldUpdateState = false;
@@ -894,7 +941,7 @@ var _WorseSelect = class _WorseSelect {
         }
       }
       if (shouldRebuild) {
-        Array.from(optionsScrollerElement.children).forEach((child) => {
+        Array.from(optionsListElement.children).forEach((child) => {
           if (!(child instanceof HTMLDivElement)) return;
           const linkedOption = getSelectOptionElement(child);
           if (!linkedOption || !Array.from(selectElement.options).includes(linkedOption)) {
@@ -909,12 +956,12 @@ var _WorseSelect = class _WorseSelect {
             linkOption(selectOption, el);
           }
           el.id = getOptionId(this, optionIndex);
-          const currentAtIndex = optionsScrollerElement.children[optionIndex];
+          const currentAtIndex = optionsListElement.children[optionIndex];
           if (currentAtIndex !== el) {
-            currentAtIndex ? currentAtIndex.before(el) : optionsScrollerElement.appendChild(el);
+            currentAtIndex ? currentAtIndex.before(el) : optionsListElement.appendChild(el);
           }
         });
-        Array.from(optionsScrollerElement.children).forEach((child) => {
+        Array.from(optionsListElement.children).forEach((child) => {
           if (child instanceof HTMLDivElement && !getSelectOptionElement(child)) {
             child.remove();
           }
@@ -945,7 +992,8 @@ var _WorseSelect = class _WorseSelect {
 _WorseSelect.mountedInstances = /* @__PURE__ */ new Set();
 var WorseSelect = _WorseSelect;
 function worseSelect(root = document, options = {}) {
-  mountSelectsInRoot(root);
+  const plugins = options.plugins ?? [];
+  mountSelectsInRoot(root, plugins);
   let rootObserver;
   if (options.observe) {
     rootObserver = new MutationObserver((mutationList) => {
@@ -954,11 +1002,11 @@ function worseSelect(root = document, options = {}) {
         mutation.addedNodes.forEach((addedNode) => {
           if (!(addedNode instanceof Element)) return;
           if (addedNode instanceof HTMLSelectElement) {
-            mountSelectElement(addedNode, root);
+            mountSelectElement(addedNode, root, plugins);
             return;
           }
           addedNode.querySelectorAll("select").forEach((el) => {
-            mountSelectElement(el, root);
+            mountSelectElement(el, root, plugins);
           });
         });
       }
@@ -985,12 +1033,12 @@ function ensureStyles() {
 function getSelectElementsInRoot(root) {
   return Array.from(root.querySelectorAll("select"));
 }
-function mountSelectsInRoot(root) {
-  getSelectElementsInRoot(root).forEach((selectElement) => mountSelectElement(selectElement, root));
+function mountSelectsInRoot(root, plugins) {
+  getSelectElementsInRoot(root).forEach((selectElement) => mountSelectElement(selectElement, root, plugins));
 }
-function mountSelectElement(selectElement, root) {
+function mountSelectElement(selectElement, root, plugins) {
   if (instances.get(selectElement)) return;
-  const instance = new WorseSelect(selectElement, getConfig(selectElement), root);
+  const instance = new WorseSelect(selectElement, getConfig(selectElement), root, plugins);
   instance.mount();
   instances.set(selectElement, instance);
 }

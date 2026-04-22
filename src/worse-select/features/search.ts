@@ -1,66 +1,76 @@
 // Copyright (c) 2026 Kevin Matthews
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+import type { Plugin, PluginContext } from '../internal-types';
 import { getWorseOptionElement } from '../option-map';
-import type { SearchContext } from '../internal-types';
 
-function scrollFirstVisibleMatchIntoView(context: SearchContext) {
-    const { optionsListElement } = context;
-    if (!(optionsListElement instanceof HTMLDivElement)) return;
+function applyFilter(context: PluginContext, searchTerm: string) {
+    const term = searchTerm.trim().toLowerCase();
 
-    const firstMatch = optionsListElement.querySelector('.worse-select-option.matches');
-    if (!(firstMatch instanceof HTMLDivElement)) return;
+    Array.from(context.selectElement.options).forEach(selectOption => {
+        const el = getWorseOptionElement(selectOption);
+        if (!(el instanceof HTMLDivElement)) return;
+        const matches = term !== '' && el.textContent.toLowerCase().includes(term);
+        el.classList.toggle('matches', matches);
+    });
 
-    firstMatch.scrollIntoView({ block: 'nearest' });
-}
-
-function updateSearchStatus(context: SearchContext) {
-    const { statusElement, optionsListElement } = context;
-    if (!(statusElement instanceof HTMLDivElement)) return;
-    if (!(optionsListElement instanceof HTMLDivElement)) return;
-
-    const searchTerm = context.searchTerm.trim();
-
-    if (!searchTerm) {
-        statusElement.textContent = '';
-        context.lastSearchStatusMessage = '';
+    if (!term) {
+        context.clearMessage();
         return;
     }
 
-    const visibleResultCount = Array.from(
-        optionsListElement.querySelectorAll('.worse-select-option.matches')
-    ).length;
+    const matchCount = context.optionsListElement.querySelectorAll('.worse-select-option.matches').length;
+    const message =
+        matchCount === 0 ? 'No results found' :
+        matchCount === 1 ? '1 result available' :
+        `${matchCount} results available`;
 
-    const nextMessage =
-        visibleResultCount === 0 ? 'No results found' :
-        visibleResultCount === 1 ? '1 result available' :
-        `${visibleResultCount} results available`;
+    context.setMessage(message);
 
-    if (nextMessage === context.lastSearchStatusMessage) return;
-
-    context.lastSearchStatusMessage = nextMessage;
-    statusElement.textContent = '';
-
-    // Defer the update by one tick so screen readers announce a change even when the
-    // message text happens to be the same string as the previous announcement.
-    window.setTimeout(() => {
-        if (context.statusElement === statusElement) {
-            statusElement.textContent = nextMessage;
-        }
-    }, 0);
+    const firstMatch = context.optionsListElement.querySelector('.worse-select-option.matches');
+    if (firstMatch instanceof HTMLDivElement) {
+        firstMatch.scrollIntoView({ block: 'nearest' });
+    }
 }
 
-export function applySearchFilter(context: SearchContext) {
-    const searchTerm = context.searchTerm.trim().toLowerCase();
+export function createBuiltinSearchPlugin(): Plugin {
+    let searchTerm = '';
+    let pluginContext: PluginContext | null = null;
 
-    Array.from(context.selectElement.options).forEach(selectOption => {
-        const worseOptionElement = getWorseOptionElement(selectOption);
-        if (!(worseOptionElement instanceof HTMLDivElement)) return;
+    return {
+        name: 'search',
 
-        const matches = searchTerm !== '' && worseOptionElement.textContent.toLowerCase().includes(searchTerm);
-        worseOptionElement.classList.toggle('matches', matches);
-    });
+        init(context: PluginContext) {
+            pluginContext = context;
+            const { searchInputElement } = context;
+            if (!searchInputElement) return;
 
-    updateSearchStatus(context);
-    scrollFirstVisibleMatchIntoView(context);
+            context.on(searchInputElement, 'input', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLInputElement)) return;
+                searchTerm = target.value;
+                applyFilter(context, searchTerm);
+            });
+        },
+
+        onSync() {
+            if (!pluginContext) return;
+            applyFilter(pluginContext, searchTerm);
+        },
+
+        onClose() {
+            if (!pluginContext) return;
+            searchTerm = '';
+            const { searchInputElement } = pluginContext;
+            if (searchInputElement instanceof HTMLInputElement) {
+                searchInputElement.value = '';
+            }
+            applyFilter(pluginContext, '');
+        },
+
+        destroy() {
+            pluginContext = null;
+            searchTerm = '';
+        },
+    };
 }

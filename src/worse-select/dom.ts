@@ -105,13 +105,9 @@ export function createSearchHtml(worseSelectInstance: WorseSelectContext) {
     `;
 }
 
-export function createStatusHtml(worseSelectInstance: WorseSelectContext) {
-    if (!worseSelectInstance.config.searchable) {
-        return '';
-    }
-
+export function createMessageHtml() {
     return `
-    <div class="worse-select-status worse-select-visually-hidden" 
+    <div class="worse-select-message worse-select-visually-hidden"
          role="status"
          aria-live="polite"
          aria-atomic="true"></div>
@@ -141,7 +137,7 @@ export function createWorseSelect(worseSelectInstance: WorseSelectContext) {
       </button>
       <div class="worse-select-options">
         ${createSearchHtml(worseSelectInstance)}
-        ${createStatusHtml(worseSelectInstance)}
+        ${createMessageHtml()}
         <div class="worse-select-options-scroller"${headerStyleAttribute}></div>
       </div>
     </div>

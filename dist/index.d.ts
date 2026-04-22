@@ -1,6 +1,24 @@
 type RootNode = ParentNode;
+type PluginContext = {
+    readonly selectElement: HTMLSelectElement;
+    readonly headerElement: HTMLButtonElement;
+    readonly optionsListElement: HTMLDivElement;
+    readonly searchInputElement?: HTMLInputElement;
+    setMessage(text: string): void;
+    clearMessage(): void;
+    on(target: EventTarget, event: string, handler: EventListener): void;
+};
+type Plugin = {
+    name: string;
+    init(context: PluginContext): void;
+    onSync?(): void;
+    onOpen?(): void;
+    onClose?(): void;
+    destroy?(): void;
+};
 type WorseSelectOptions = {
     observe?: boolean;
+    plugins?: Plugin[];
 };
 
 /**
@@ -24,4 +42,4 @@ type WorseSelectOptions = {
  */
 declare function worseSelect(root?: RootNode, options?: WorseSelectOptions): () => void;
 
-export { worseSelect };
+export { type Plugin, type PluginContext, worseSelect };

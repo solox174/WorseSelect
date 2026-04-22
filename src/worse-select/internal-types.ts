@@ -19,8 +19,28 @@ export type SelectConfig = {
 export type ConfigKey = keyof SelectConfig;
 export type RootNode = ParentNode;
 
+export type PluginContext = {
+    readonly selectElement: HTMLSelectElement;
+    readonly headerElement: HTMLButtonElement;
+    readonly optionsListElement: HTMLDivElement;
+    readonly searchInputElement?: HTMLInputElement;
+    setMessage(text: string): void;
+    clearMessage(): void;
+    on(target: EventTarget, event: string, handler: EventListener): void;
+};
+
+export type Plugin = {
+    name: string;
+    init(context: PluginContext): void;
+    onSync?(): void;
+    onOpen?(): void;
+    onClose?(): void;
+    destroy?(): void;
+};
+
 export type WorseSelectOptions = {
     observe?: boolean;
+    plugins?: Plugin[];
 };
 
 // Minimal interface exposed to dom.ts and select-helpers.ts. Restricts those modules to the
@@ -29,13 +49,4 @@ export interface WorseSelectContext {
     selectElement: HTMLSelectElement;
     config: SelectConfig;
     instanceId: string;
-}
-
-// Interface for search.ts. Contains only the fields the search feature reads and writes.
-export interface SearchContext {
-    selectElement: HTMLSelectElement;
-    optionsListElement?: HTMLDivElement;
-    statusElement?: HTMLDivElement;
-    searchTerm: string;
-    lastSearchStatusMessage: string;
 }

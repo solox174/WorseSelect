@@ -10,17 +10,19 @@
  * Widget-specific behavior uses `data-*` attributes such as `data-searchable` and
  * `data-dropdown-height-px`, keeping the public API aligned with standard HTML.
  */
-import { DEFAULT_CONFIG, SelectConfig, RootNode, WorseSelectOptions } from './internal-types';
+import { DEFAULT_CONFIG, SelectConfig, RootNode, WorseSelectOptions, Plugin, PluginContext } from './internal-types';
 import type { WorseSelectContext } from './internal-types';
 import { createCSS } from './css';
 import { getConfig } from './config';
 import { createWorseOptionElement, createWorseSelect, getOptionId, scrollOptionIntoView } from './dom';
 import { getSelectOptionElement, getWorseOptionElement, linkOption, unlinkOption } from './option-map';
 import { isPlaceholderOption, shouldUseListboxMode, isMultipleSelect } from './select-helpers';
-import { applySearchFilter } from './features/search';
+import { createBuiltinSearchPlugin } from './features/search';
 
 const instances = new WeakMap<HTMLSelectElement, WorseSelect>();
 let nextInstanceId = 0;
+
+type PluginListener = { target: EventTarget; event: string; handler: EventListener };
 
 class WorseSelect implements WorseSelectContext {
     // Tracks all mounted instances so a single document-level pointerdown listener can close any
@@ -48,7 +50,7 @@ class WorseSelect implements WorseSelectContext {
     dropdownPanelElement?: HTMLDivElement;
     optionsListElement?: HTMLDivElement;
     searchInputElement?: HTMLInputElement;
-    statusElement?: HTMLDivElement;
+    messageElement?: HTMLDivElement;
     optionObserver?: MutationObserver;
 
     onSelectChange?: EventListener;
@@ -56,19 +58,24 @@ class WorseSelect implements WorseSelectContext {
     onHeaderClick?: EventListener;
     onHeaderKeyDown?: EventListener;
     onOptionsKeyDown?: EventListener;
-    onSearchInput?: EventListener;
     onSearchKeyDown?: EventListener;
 
     open = false;
-    searchTerm = '';
-    lastSearchStatusMessage = '';
     activeOption?: HTMLOptionElement;
 
-    constructor(selectElement: HTMLSelectElement, config: Partial<SelectConfig> = {}, root: RootNode = document) {
+    private plugins: Plugin[] = [];
+    private pluginListeners: PluginListener[] = [];
+
+    constructor(selectElement: HTMLSelectElement, config: Partial<SelectConfig> = {}, root: RootNode = document, plugins: Plugin[] = []) {
         this.selectElement = selectElement;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.root = root;
         this.instanceId = `ws-${++nextInstanceId}`;
+        this.plugins = [...plugins];
+
+        if (this.config.searchable && !plugins.some(p => p.name === 'search')) {
+            this.plugins.push(createBuiltinSearchPlugin());
+        }
     }
 
     // --- Lifecycle ---
@@ -83,7 +90,7 @@ class WorseSelect implements WorseSelectContext {
         this.dropdownPanelElement = this.worseSelectElement.querySelector('.worse-select-options') as HTMLDivElement | undefined;
         this.optionsListElement = this.worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement | undefined;
         this.searchInputElement = this.worseSelectElement.querySelector('.worse-select-search-input') as HTMLInputElement | undefined;
-        this.statusElement = this.worseSelectElement.querySelector('.worse-select-status') as HTMLDivElement | undefined;
+        this.messageElement = this.worseSelectElement.querySelector('.worse-select-message') as HTMLDivElement | undefined;
 
         if (WorseSelect.mountedInstances.size === 0) {
             document.addEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
@@ -93,11 +100,21 @@ class WorseSelect implements WorseSelectContext {
         this.bindEvents();
         this.observeOptions();
         this.render();
+        this.initPlugins();
     }
 
     destroy() {
         this.optionObserver?.disconnect();
         this.optionObserver = undefined;
+
+        for (const plugin of this.plugins) {
+            plugin.destroy?.();
+        }
+        for (const { target, event, handler } of this.pluginListeners) {
+            target.removeEventListener(event, handler);
+        }
+        this.pluginListeners = [];
+        this.plugins = [];
 
         if (this.onSelectChange) {
             this.selectElement.removeEventListener('change', this.onSelectChange);
@@ -124,19 +141,14 @@ class WorseSelect implements WorseSelectContext {
             this.onOptionsKeyDown = undefined;
         }
 
-        WorseSelect.mountedInstances.delete(this);
-        if (WorseSelect.mountedInstances.size === 0) {
-            document.removeEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
-        }
-
-        if (this.onSearchInput && this.searchInputElement) {
-            this.searchInputElement.removeEventListener('input', this.onSearchInput);
-            this.onSearchInput = undefined;
-        }
-
         if (this.onSearchKeyDown && this.searchInputElement) {
             this.searchInputElement.removeEventListener('keydown', this.onSearchKeyDown);
             this.onSearchKeyDown = undefined;
+        }
+
+        WorseSelect.mountedInstances.delete(this);
+        if (WorseSelect.mountedInstances.size === 0) {
+            document.removeEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
         }
 
         Array.from(this.selectElement.options).forEach(unlinkOption);
@@ -149,15 +161,12 @@ class WorseSelect implements WorseSelectContext {
         this.dropdownPanelElement = undefined;
         this.optionsListElement = undefined;
         this.searchInputElement = undefined;
-        this.statusElement = undefined;
+        this.messageElement = undefined;
         this.open = false;
-        this.searchTerm = '';
-        this.lastSearchStatusMessage = '';
         this.activeOption = undefined;
     }
 
     // --- State sync ---
-
     syncDimensions() {
         const { worseSelectElement, headerElement, optionsListElement, selectElement, config } = this;
         if (!(worseSelectElement instanceof HTMLDivElement)) return;
@@ -294,31 +303,50 @@ class WorseSelect implements WorseSelectContext {
         this.updateDisabledState();
         this.updateOpenState();
         this.syncDimensions();
-        applySearchFilter(this);
+        for (const plugin of this.plugins) {
+            plugin.onSync?.();
+        }
+    }
+
+    // --- Message ---
+    setMessage(text: string) {
+        const { messageElement } = this;
+        if (!(messageElement instanceof HTMLDivElement)) return;
+        messageElement.textContent = '';
+        // Defer the update by one tick so screen readers announce a change even when the
+        // message text happens to be the same string as the previous announcement.
+        window.setTimeout(() => {
+            if (this.messageElement === messageElement) {
+                messageElement.textContent = text;
+            }
+        }, 0);
+    }
+
+    clearMessage() {
+        if (!(this.messageElement instanceof HTMLDivElement)) return;
+        this.messageElement.textContent = '';
     }
 
     // --- Open / close ---
-
     openDropdown() {
         if (this.selectElement.disabled) return;
         if (shouldUseListboxMode(this)) return;
 
         this.open = true;
         this.updateOpenState();
+        for (const plugin of this.plugins) {
+            plugin.onOpen?.();
+        }
     }
 
     closeDropdown() {
         if (shouldUseListboxMode(this)) return;
         if (!this.open) return;
 
-        this.searchTerm = '';
         this.open = false;
-
-        if (this.searchInputElement instanceof HTMLInputElement) {
-            this.searchInputElement.value = '';
+        for (const plugin of this.plugins) {
+            plugin.onClose?.();
         }
-
-        applySearchFilter(this);
         this.updateOpenState();
     }
 
@@ -344,7 +372,6 @@ class WorseSelect implements WorseSelectContext {
     }
 
     // --- Navigation ---
-
     getVisibleEnabledOptions() {
         return Array.from(this.selectElement.options).filter(opt => {
             if (opt.disabled) return false;
@@ -407,6 +434,27 @@ class WorseSelect implements WorseSelectContext {
     }
 
     // --- Internal wiring ---
+    private initPlugins() {
+        if (!(this.headerElement instanceof HTMLButtonElement)) return;
+        if (!(this.optionsListElement instanceof HTMLDivElement)) return;
+
+        const context: PluginContext = {
+            selectElement: this.selectElement,
+            headerElement: this.headerElement,
+            optionsListElement: this.optionsListElement,
+            searchInputElement: this.searchInputElement,
+            setMessage: (text) => this.setMessage(text),
+            clearMessage: () => this.clearMessage(),
+            on: (target, event, handler) => {
+                target.addEventListener(event, handler);
+                this.pluginListeners.push({ target, event, handler });
+            },
+        };
+
+        for (const plugin of this.plugins) {
+            plugin.init(context);
+        }
+    }
 
     // Keyboard contracts for header, list, and search are kept together here — splitting them
     // would scatter related key handling across multiple methods. If this grows significantly,
@@ -529,13 +577,6 @@ class WorseSelect implements WorseSelectContext {
             }
         };
 
-        const onSearchInput: EventListener = event => {
-            const target = event.target;
-            if (!(target instanceof HTMLInputElement)) return;
-            this.searchTerm = target.value;
-            applySearchFilter(this);
-        };
-
         const onSearchKeyDown: EventListener = event => {
             if (!(event instanceof KeyboardEvent)) return;
 
@@ -584,9 +625,7 @@ class WorseSelect implements WorseSelectContext {
         optionsListElement.addEventListener('keydown', onOptionsKeyDown);
 
         if (searchInputElement instanceof HTMLInputElement) {
-            searchInputElement.addEventListener('input', onSearchInput);
             searchInputElement.addEventListener('keydown', onSearchKeyDown);
-            this.onSearchInput = onSearchInput;
             this.onSearchKeyDown = onSearchKeyDown;
         }
 
@@ -687,7 +726,8 @@ class WorseSelect implements WorseSelectContext {
  * under the provided root.
  */
 export function worseSelect(root: RootNode = document, options: WorseSelectOptions = {}): () => void {
-    mountSelectsInRoot(root);
+    const plugins = options.plugins ?? [];
+    mountSelectsInRoot(root, plugins);
 
     let rootObserver: MutationObserver | undefined;
 
@@ -700,12 +740,12 @@ export function worseSelect(root: RootNode = document, options: WorseSelectOptio
                     if (!(addedNode instanceof Element)) return;
 
                     if (addedNode instanceof HTMLSelectElement) {
-                        mountSelectElement(addedNode, root);
+                        mountSelectElement(addedNode, root, plugins);
                         return;
                     }
 
                     addedNode.querySelectorAll<HTMLSelectElement>('select').forEach(el => {
-                        mountSelectElement(el, root);
+                        mountSelectElement(el, root, plugins);
                     });
                 });
             }
@@ -739,14 +779,14 @@ function getSelectElementsInRoot(root: RootNode) {
     return Array.from(root.querySelectorAll<HTMLSelectElement>('select'));
 }
 
-function mountSelectsInRoot(root: RootNode) {
-    getSelectElementsInRoot(root).forEach(selectElement => mountSelectElement(selectElement, root));
+function mountSelectsInRoot(root: RootNode, plugins: Plugin[]) {
+    getSelectElementsInRoot(root).forEach(selectElement => mountSelectElement(selectElement, root, plugins));
 }
 
-function mountSelectElement(selectElement: HTMLSelectElement, root: RootNode) {
+function mountSelectElement(selectElement: HTMLSelectElement, root: RootNode, plugins: Plugin[]) {
     if (instances.get(selectElement)) return;
 
-    const instance = new WorseSelect(selectElement, getConfig(selectElement), root);
+    const instance = new WorseSelect(selectElement, getConfig(selectElement), root, plugins);
     instance.mount();
     instances.set(selectElement, instance);
 }
