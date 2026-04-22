@@ -17,7 +17,7 @@ export function createCSS() {
         --ws-active-outline: #2563eb;
         --ws-selected-bg: #d2e3fc;
         --ws-selected-text-color: #174ea6;
-        --ws-focus-outline: #2563eb;
+        --ws-focus-outline: AccentColor;
         --ws-search-border-color: #b7b7b7;
         --ws-divider-color: #d0d0d0;
         --ws-highlight-bg: #fff3a3;
@@ -80,7 +80,7 @@ export function createCSS() {
     
     .worse-select-header:focus-visible,
     .worse-select-search-input:focus-visible {
-        outline: 2px solid var(--ws-focus-outline);
+        outline: 2px solid var(--ws-focus-outline) !important;
         outline-offset: 1px;
     }
 
