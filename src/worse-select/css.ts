@@ -74,8 +74,11 @@ export function createCSS() {
         cursor: not-allowed;
     }
 
+    .worse-select-options-scroller:focus-visible {
+        outline: none !important;
+    }
+    
     .worse-select-header:focus-visible,
-    .worse-select-options-scroller:focus-visible,
     .worse-select-search-input:focus-visible {
         outline: 2px solid var(--ws-focus-outline);
         outline-offset: 1px;
@@ -165,6 +168,7 @@ export function createCSS() {
     .worse-select-option.disabled {
         color: var(--ws-disabled-text-color);
         cursor: not-allowed;
+        background: var(--ws-disabled-bg);
     }
 
     .worse-select-option.disabled:hover {

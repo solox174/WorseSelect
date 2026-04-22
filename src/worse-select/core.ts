@@ -208,6 +208,7 @@ class WorseSelect implements WorseSelectContext {
 
         Array.from(selectElement.options).forEach(selectOption => {
             if (!selectOption.selected) return;
+            if (isPlaceholderOption(selectOption)) return;
             const el = getWorseOptionElement(selectOption);
             el?.classList.add('selected');
             el?.setAttribute('aria-selected', 'true');

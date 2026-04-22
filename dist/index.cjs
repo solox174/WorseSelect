@@ -104,8 +104,11 @@ function createCSS() {
         cursor: not-allowed;
     }
 
+    .worse-select-options-scroller:focus-visible {
+        outline: none !important;
+    }
+    
     .worse-select-header:focus-visible,
-    .worse-select-options-scroller:focus-visible,
     .worse-select-search-input:focus-visible {
         outline: 2px solid var(--ws-focus-outline);
         outline-offset: 1px;
@@ -195,6 +198,7 @@ function createCSS() {
     .worse-select-option.disabled {
         color: var(--ws-disabled-text-color);
         cursor: not-allowed;
+        background: var(--ws-disabled-bg);
     }
 
     .worse-select-option.disabled:hover {
@@ -580,6 +584,7 @@ var _WorseSelect = class _WorseSelect {
     });
     Array.from(selectElement.options).forEach((selectOption) => {
       if (!selectOption.selected) return;
+      if (isPlaceholderOption(selectOption)) return;
       const el = getWorseOptionElement(selectOption);
       el?.classList.add("selected");
       el?.setAttribute("aria-selected", "true");
