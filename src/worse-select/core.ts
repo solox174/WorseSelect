@@ -45,8 +45,8 @@ class WorseSelect implements WorseSelectContext {
 
     worseSelectElement?: HTMLDivElement;
     headerElement?: HTMLButtonElement;
-    optionsWrapperElement?: HTMLDivElement;
-    optionsScrollerElement?: HTMLDivElement;
+    dropdownPanelElement?: HTMLDivElement;
+    optionsListElement?: HTMLDivElement;
     searchInputElement?: HTMLInputElement;
     statusElement?: HTMLDivElement;
     optionObserver?: MutationObserver;
@@ -80,8 +80,8 @@ class WorseSelect implements WorseSelectContext {
 
         this.worseSelectElement = createWorseSelect(this);
         this.headerElement = this.worseSelectElement.querySelector('.worse-select-header') as HTMLButtonElement | undefined;
-        this.optionsWrapperElement = this.worseSelectElement.querySelector('.worse-select-options') as HTMLDivElement | undefined;
-        this.optionsScrollerElement = this.worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement | undefined;
+        this.dropdownPanelElement = this.worseSelectElement.querySelector('.worse-select-options') as HTMLDivElement | undefined;
+        this.optionsListElement = this.worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement | undefined;
         this.searchInputElement = this.worseSelectElement.querySelector('.worse-select-search-input') as HTMLInputElement | undefined;
         this.statusElement = this.worseSelectElement.querySelector('.worse-select-status') as HTMLDivElement | undefined;
 
@@ -104,8 +104,8 @@ class WorseSelect implements WorseSelectContext {
             this.onSelectChange = undefined;
         }
 
-        if (this.onOptionsClick && this.optionsWrapperElement) {
-            this.optionsWrapperElement.removeEventListener('click', this.onOptionsClick);
+        if (this.onOptionsClick && this.dropdownPanelElement) {
+            this.dropdownPanelElement.removeEventListener('click', this.onOptionsClick);
             this.onOptionsClick = undefined;
         }
 
@@ -119,8 +119,8 @@ class WorseSelect implements WorseSelectContext {
             this.onHeaderKeyDown = undefined;
         }
 
-        if (this.onOptionsKeyDown && this.optionsScrollerElement) {
-            this.optionsScrollerElement.removeEventListener('keydown', this.onOptionsKeyDown);
+        if (this.onOptionsKeyDown && this.optionsListElement) {
+            this.optionsListElement.removeEventListener('keydown', this.onOptionsKeyDown);
             this.onOptionsKeyDown = undefined;
         }
 
@@ -146,8 +146,8 @@ class WorseSelect implements WorseSelectContext {
 
         this.worseSelectElement = undefined;
         this.headerElement = undefined;
-        this.optionsWrapperElement = undefined;
-        this.optionsScrollerElement = undefined;
+        this.dropdownPanelElement = undefined;
+        this.optionsListElement = undefined;
         this.searchInputElement = undefined;
         this.statusElement = undefined;
         this.open = false;
@@ -159,10 +159,10 @@ class WorseSelect implements WorseSelectContext {
     // --- State sync ---
 
     syncDimensions() {
-        const { worseSelectElement, headerElement, optionsScrollerElement, selectElement, config } = this;
+        const { worseSelectElement, headerElement, optionsListElement, selectElement, config } = this;
         if (!(worseSelectElement instanceof HTMLDivElement)) return;
         if (!(headerElement instanceof HTMLButtonElement)) return;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
 
         const computedStyle = window.getComputedStyle(selectElement);
 
@@ -171,7 +171,7 @@ class WorseSelect implements WorseSelectContext {
         }
 
         headerElement.style.font = computedStyle.font;
-        optionsScrollerElement.style.maxHeight = `${config.dropdownHeightPx}px`;
+        optionsListElement.style.maxHeight = `${config.dropdownHeightPx}px`;
     }
 
     updateOpenState() {
@@ -188,19 +188,19 @@ class WorseSelect implements WorseSelectContext {
             this.headerElement.setAttribute('aria-expanded', String(isOpen));
         }
 
-        if (this.optionsScrollerElement instanceof HTMLDivElement) {
-            this.optionsScrollerElement.setAttribute('aria-multiselectable', String(isMultipleSelect(this)));
-            this.optionsScrollerElement.tabIndex = isOpen ? 0 : -1;
+        if (this.optionsListElement instanceof HTMLDivElement) {
+            this.optionsListElement.setAttribute('aria-multiselectable', String(isMultipleSelect(this)));
+            this.optionsListElement.tabIndex = isOpen ? 0 : -1;
         }
 
         this.updateHeaderState();
     }
 
     updateSelectedState() {
-        const { optionsScrollerElement, selectElement } = this;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        const { optionsListElement, selectElement } = this;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
 
-        Array.from(optionsScrollerElement.children).forEach(el => {
+        Array.from(optionsListElement.children).forEach(el => {
             if (!(el instanceof HTMLDivElement)) return;
             el.classList.remove('selected');
             el.setAttribute('aria-selected', 'false');
@@ -259,28 +259,28 @@ class WorseSelect implements WorseSelectContext {
     }
 
     updateActiveDescendant() {
-        const { optionsScrollerElement, activeOption } = this;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        const { optionsListElement, activeOption } = this;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
 
         if (!activeOption) {
-            optionsScrollerElement.removeAttribute('aria-activedescendant');
+            optionsListElement.removeAttribute('aria-activedescendant');
             return;
         }
 
         const el = getWorseOptionElement(activeOption);
         if (!(el instanceof HTMLDivElement)) {
-            optionsScrollerElement.removeAttribute('aria-activedescendant');
+            optionsListElement.removeAttribute('aria-activedescendant');
             return;
         }
 
-        optionsScrollerElement.setAttribute('aria-activedescendant', el.id);
+        optionsListElement.setAttribute('aria-activedescendant', el.id);
     }
 
     updateActiveOptionState() {
-        const { optionsScrollerElement, activeOption } = this;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        const { optionsListElement, activeOption } = this;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
 
-        Array.from(optionsScrollerElement.children).forEach(el => {
+        Array.from(optionsListElement.children).forEach(el => {
             if (el instanceof HTMLDivElement) el.classList.remove('active');
         });
 
@@ -330,11 +330,11 @@ class WorseSelect implements WorseSelectContext {
     openDropdownAndFocusList() {
         this.openDropdown();
 
-        const { optionsScrollerElement } = this;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        const { optionsListElement } = this;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
 
-        optionsScrollerElement.tabIndex = 0;
-        optionsScrollerElement.focus();
+        optionsListElement.tabIndex = 0;
+        optionsListElement.focus();
         scrollOptionIntoView(this.activeOption);
     }
 
@@ -378,15 +378,15 @@ class WorseSelect implements WorseSelectContext {
     }
 
     getPageJumpSize() {
-        const { optionsScrollerElement } = this;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return 10;
+        const { optionsListElement } = this;
+        if (!(optionsListElement instanceof HTMLDivElement)) return 10;
 
-        const firstOption = Array.from(optionsScrollerElement.querySelectorAll('.worse-select-option'))
+        const firstOption = Array.from(optionsListElement.querySelectorAll('.worse-select-option'))
             .find(el => el instanceof HTMLDivElement);
         if (!(firstOption instanceof HTMLDivElement)) return 10;
 
         const optionHeight = firstOption.offsetHeight || 1;
-        return Math.max(1, Math.floor(optionsScrollerElement.clientHeight / optionHeight));
+        return Math.max(1, Math.floor(optionsListElement.clientHeight / optionHeight));
     }
 
     moveActiveByPage(direction: 1 | -1) {
@@ -412,11 +412,11 @@ class WorseSelect implements WorseSelectContext {
     // would scatter related key handling across multiple methods. If this grows significantly,
     // consider breaking out per-component handlers.
     private bindEvents() {
-        const { worseSelectElement, selectElement, optionsWrapperElement, optionsScrollerElement, headerElement, searchInputElement } = this;
+        const { worseSelectElement, selectElement, dropdownPanelElement, optionsListElement, headerElement, searchInputElement } = this;
 
         if (!(worseSelectElement instanceof HTMLDivElement)) return;
-        if (!(optionsWrapperElement instanceof HTMLDivElement)) return;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        if (!(dropdownPanelElement instanceof HTMLDivElement)) return;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
         if (!(headerElement instanceof HTMLButtonElement)) return;
 
         const onOptionsClick: EventListener = event => {
@@ -425,7 +425,7 @@ class WorseSelect implements WorseSelectContext {
 
             const optionEl = target.closest('.worse-select-option');
             if (!(optionEl instanceof HTMLDivElement)) return;
-            if (!optionsWrapperElement.contains(optionEl)) return;
+            if (!dropdownPanelElement.contains(optionEl)) return;
             if (optionEl.classList.contains('disabled')) return;
 
             const selectOption = getSelectOptionElement(optionEl);
@@ -542,32 +542,32 @@ class WorseSelect implements WorseSelectContext {
             switch (event.key) {
                 case 'ArrowDown':
                     event.preventDefault();
-                    optionsScrollerElement.focus();
+                    optionsListElement.focus();
                     this.moveActiveOption(1);
                     break;
                 case 'ArrowUp':
                     event.preventDefault();
-                    optionsScrollerElement.focus();
+                    optionsListElement.focus();
                     this.moveActiveOption(-1);
                     break;
                 case 'Home':
                     event.preventDefault();
-                    optionsScrollerElement.focus();
+                    optionsListElement.focus();
                     this.moveActiveToBoundary('start');
                     break;
                 case 'End':
                     event.preventDefault();
-                    optionsScrollerElement.focus();
+                    optionsListElement.focus();
                     this.moveActiveToBoundary('end');
                     break;
                 case 'PageDown':
                     event.preventDefault();
-                    optionsScrollerElement.focus();
+                    optionsListElement.focus();
                     this.moveActiveByPage(1);
                     break;
                 case 'PageUp':
                     event.preventDefault();
-                    optionsScrollerElement.focus();
+                    optionsListElement.focus();
                     this.moveActiveByPage(-1);
                     break;
                 case 'Escape':
@@ -577,11 +577,11 @@ class WorseSelect implements WorseSelectContext {
             }
         };
 
-        optionsWrapperElement.addEventListener('click', onOptionsClick);
+        dropdownPanelElement.addEventListener('click', onOptionsClick);
         selectElement.addEventListener('change', onSelectChange);
         headerElement.addEventListener('click', onHeaderClick);
         headerElement.addEventListener('keydown', onHeaderKeyDown);
-        optionsScrollerElement.addEventListener('keydown', onOptionsKeyDown);
+        optionsListElement.addEventListener('keydown', onOptionsKeyDown);
 
         if (searchInputElement instanceof HTMLInputElement) {
             searchInputElement.addEventListener('input', onSearchInput);
@@ -603,8 +603,8 @@ class WorseSelect implements WorseSelectContext {
     // other and the scroller's child order. If this grows (e.g. option groups, reordering
     // animations), extract into a dedicated reconciler.
     private observeOptions() {
-        const { selectElement, optionsScrollerElement } = this;
-        if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+        const { selectElement, optionsListElement } = this;
+        if (!(optionsListElement instanceof HTMLDivElement)) return;
 
         const observer = new MutationObserver(mutationList => {
             let shouldRebuild = false;
@@ -621,7 +621,7 @@ class WorseSelect implements WorseSelectContext {
             }
 
             if (shouldRebuild) {
-                Array.from(optionsScrollerElement.children).forEach(child => {
+                Array.from(optionsListElement.children).forEach(child => {
                     if (!(child instanceof HTMLDivElement)) return;
                     const linkedOption = getSelectOptionElement(child);
                     if (!linkedOption || !Array.from(selectElement.options).includes(linkedOption)) {
@@ -640,13 +640,13 @@ class WorseSelect implements WorseSelectContext {
 
                     el.id = getOptionId(this, optionIndex);
 
-                    const currentAtIndex = optionsScrollerElement.children[optionIndex];
+                    const currentAtIndex = optionsListElement.children[optionIndex];
                     if (currentAtIndex !== el) {
-                        currentAtIndex ? currentAtIndex.before(el) : optionsScrollerElement.appendChild(el);
+                        currentAtIndex ? currentAtIndex.before(el) : optionsListElement.appendChild(el);
                     }
                 });
 
-                Array.from(optionsScrollerElement.children).forEach(child => {
+                Array.from(optionsListElement.children).forEach(child => {
                     if (child instanceof HTMLDivElement && !getSelectOptionElement(child)) {
                         child.remove();
                     }

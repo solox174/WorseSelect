@@ -5,19 +5,19 @@ import { getWorseOptionElement } from '../option-map';
 import type { SearchContext } from '../internal-types';
 
 function scrollFirstVisibleMatchIntoView(context: SearchContext) {
-    const { optionsScrollerElement } = context;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+    const { optionsListElement } = context;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
 
-    const firstMatch = optionsScrollerElement.querySelector('.worse-select-option.matches');
+    const firstMatch = optionsListElement.querySelector('.worse-select-option.matches');
     if (!(firstMatch instanceof HTMLDivElement)) return;
 
     firstMatch.scrollIntoView({ block: 'nearest' });
 }
 
 function updateSearchStatus(context: SearchContext) {
-    const { statusElement, optionsScrollerElement } = context;
+    const { statusElement, optionsListElement } = context;
     if (!(statusElement instanceof HTMLDivElement)) return;
-    if (!(optionsScrollerElement instanceof HTMLDivElement)) return;
+    if (!(optionsListElement instanceof HTMLDivElement)) return;
 
     const searchTerm = context.searchTerm.trim();
 
@@ -28,7 +28,7 @@ function updateSearchStatus(context: SearchContext) {
     }
 
     const visibleResultCount = Array.from(
-        optionsScrollerElement.querySelectorAll('.worse-select-option.matches')
+        optionsListElement.querySelectorAll('.worse-select-option.matches')
     ).length;
 
     const nextMessage =

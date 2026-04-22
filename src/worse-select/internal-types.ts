@@ -34,7 +34,7 @@ export interface WorseSelectContext {
 // Interface for search.ts. Contains only the fields the search feature reads and writes.
 export interface SearchContext {
     selectElement: HTMLSelectElement;
-    optionsScrollerElement?: HTMLDivElement;
+    optionsListElement?: HTMLDivElement;
     statusElement?: HTMLDivElement;
     searchTerm: string;
     lastSearchStatusMessage: string;

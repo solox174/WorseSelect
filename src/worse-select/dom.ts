@@ -151,12 +151,12 @@ export function createWorseSelect(worseSelectInstance: WorseSelectContext) {
         htmlString
     ).firstElementChild as HTMLDivElement;
 
-    const optionsScrollerElement = worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement;
-    optionsScrollerElement.setAttribute('role', 'listbox');
-    optionsScrollerElement.tabIndex = shouldUseListboxMode(worseSelectInstance) ? 0 : -1;
+    const optionsListElement = worseSelectElement.querySelector('.worse-select-options-scroller') as HTMLDivElement;
+    optionsListElement.setAttribute('role', 'listbox');
+    optionsListElement.tabIndex = shouldUseListboxMode(worseSelectInstance) ? 0 : -1;
 
     if (isMultipleSelect(worseSelectInstance)) {
-        optionsScrollerElement.setAttribute('aria-multiselectable', 'true');
+        optionsListElement.setAttribute('aria-multiselectable', 'true');
     }
 
     const selectOptions = Array.from(worseSelectInstance.selectElement.options);
@@ -169,7 +169,7 @@ export function createWorseSelect(worseSelectInstance: WorseSelectContext) {
             i
         );
         linkOption(selectOption, worseOptionElement);
-        optionsScrollerElement.appendChild(worseOptionElement);
+        optionsListElement.appendChild(worseOptionElement);
     }
 
     return worseSelectElement;
