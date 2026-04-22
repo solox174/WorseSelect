@@ -4,7 +4,7 @@
 import { DEFAULT_CONFIG } from './internal-types';
 
 export function createCSS() {
-    return  `
+    return  /* language=CSS */ `
     :root {
         --ws-border-color: #767676;
         --ws-border-radius: 4px;
