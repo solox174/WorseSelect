@@ -202,6 +202,8 @@ worseSelect(document, {
 | `clearMessage()` | Clears the live region |
 | `on(target, event, handler)` | Registers an event listener that is removed automatically when the instance is destroyed |
 
+> `PluginContext` exposes live DOM elements owned by worse-select. Attaching listeners via `context.on()`, reading state, and applying narrowly scoped classes or attributes is fine — removing or restructuring core elements can break the widget.
+
 ### Example: remote search
 
 The built-in search highlights matching options client-side. To replace it with server-side filtering, provide a plugin named `'search'` — worse-select skips the built-in when a plugin with that name is already registered.
