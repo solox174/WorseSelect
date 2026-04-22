@@ -171,9 +171,6 @@ export function createCSS() {
         background: var(--ws-disabled-bg);
     }
 
-    .worse-select-option.disabled:hover {
-        background: transparent;
-    }
 
     .worse-select-option.hidden {
         display: none;
