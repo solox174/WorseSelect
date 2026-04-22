@@ -17,7 +17,7 @@ export function createCSS() {
         --ws-active-outline: #2563eb;
         --ws-selected-bg: #d2e3fc;
         --ws-selected-text-color: #174ea6;
-        --ws-focus-outline: AccentColor;
+        --ws-focus-outline: #2563eb;
         --ws-search-border-color: #b7b7b7;
         --ws-divider-color: #d0d0d0;
         --ws-highlight-bg: #fff3a3;
