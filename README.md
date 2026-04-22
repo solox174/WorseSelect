@@ -2,7 +2,7 @@
 
 Native-first, dependency-free custom selects with search, multi-select, a plugin API, and no framework lock-in.
 
-**[Live demo](https://solox174.github.io/WorseSelect/)**
+**[Live demo](https://solox174.github.io/WorseSelect/)** · **[npm](https://www.npmjs.com/package/worse-select)**
 
 The name is intentional. In the Unix tradition of `less` (which does more than `more`), worse-select does *less* than most custom select libraries — by design. It doesn't reimplement form state, validation, or change events. It enhances the browser instead of replacing it.
 
