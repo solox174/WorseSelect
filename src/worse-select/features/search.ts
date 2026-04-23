@@ -4,14 +4,13 @@
 import type { Plugin, PluginContext } from '../internal-types';
 import { getWorseOptionElement } from '../option-map';
 
-function applyFilter(context: PluginContext, searchTerm: string) {
+function applyHighlight(context: PluginContext, searchTerm: string) {
     const term = searchTerm.trim().toLowerCase();
 
-    Array.from(context.selectElement.options).forEach(selectOption => {
-        const el = getWorseOptionElement(selectOption);
-        if (!(el instanceof HTMLDivElement)) return;
-        const matches = term !== '' && el.textContent.toLowerCase().includes(term);
-        el.classList.toggle('matches', matches);
+    Array.from(context.optionsListElement.children).forEach(worseOption => {
+        if (!(worseOption instanceof HTMLDivElement)) return;
+        const matches = term !== '' && worseOption.textContent.toLowerCase().includes(term);
+        worseOption.classList.toggle('matches', matches);
     });
 
     if (!term) {
@@ -49,13 +48,13 @@ export function createBuiltinSearchPlugin(): Plugin {
                 const target = event.target;
                 if (!(target instanceof HTMLInputElement)) return;
                 searchTerm = target.value;
-                applyFilter(context, searchTerm);
+                applyHighlight(context, searchTerm);
             });
         },
 
         onSync() {
             if (!pluginContext) return;
-            applyFilter(pluginContext, searchTerm);
+            applyHighlight(pluginContext, searchTerm);
         },
 
         onClose() {
@@ -65,7 +64,7 @@ export function createBuiltinSearchPlugin(): Plugin {
             if (searchInputElement instanceof HTMLInputElement) {
                 searchInputElement.value = '';
             }
-            applyFilter(pluginContext, '');
+            applyHighlight(pluginContext, '');
         },
 
         destroy() {

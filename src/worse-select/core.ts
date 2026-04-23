@@ -40,6 +40,9 @@ class WorseSelect implements WorseSelectContext {
         }
     }
 
+    private typeAheadTimerId?: number;
+    private typeAheadText = '';
+    private typeAheadTimeout = 1000;
     selectElement: HTMLSelectElement;
     config: SelectConfig;
     root: RootNode;
@@ -78,7 +81,6 @@ class WorseSelect implements WorseSelectContext {
         }
     }
 
-    // --- Lifecycle ---
 
     mount() {
         if (this.worseSelectElement) return;
@@ -95,6 +97,7 @@ class WorseSelect implements WorseSelectContext {
         if (WorseSelect.mountedInstances.size === 0) {
             document.addEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
         }
+        this.worseSelectElement.addEventListener('keyup', this.handleTypeAhead);
         WorseSelect.mountedInstances.add(this);
 
         this.bindEvents();
@@ -151,6 +154,8 @@ class WorseSelect implements WorseSelectContext {
             document.removeEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
         }
 
+        this.worseSelectElement?.removeEventListener('keyup', this.handleTypeAhead);
+
         Array.from(this.selectElement.options).forEach(unlinkOption);
 
         this.worseSelectElement?.remove();
@@ -166,7 +171,6 @@ class WorseSelect implements WorseSelectContext {
         this.activeOption = undefined;
     }
 
-    // --- State sync ---
     syncDimensions() {
         const { worseSelectElement, headerElement, optionsListElement, selectElement, config } = this;
         if (!(worseSelectElement instanceof HTMLDivElement)) return;
@@ -308,7 +312,6 @@ class WorseSelect implements WorseSelectContext {
         }
     }
 
-    // --- Message ---
     setMessage(text: string) {
         const { messageElement } = this;
         if (!(messageElement instanceof HTMLDivElement)) return;
@@ -327,7 +330,6 @@ class WorseSelect implements WorseSelectContext {
         this.messageElement.textContent = '';
     }
 
-    // --- Open / close ---
     openDropdown() {
         if (this.selectElement.disabled) return;
         if (shouldUseListboxMode(this)) return;
@@ -347,6 +349,7 @@ class WorseSelect implements WorseSelectContext {
         for (const plugin of this.plugins) {
             plugin.onClose?.();
         }
+        this.root.querySelector('.active')?.classList.remove('active');
         this.updateOpenState();
     }
 
@@ -371,7 +374,6 @@ class WorseSelect implements WorseSelectContext {
         this.headerElement?.focus();
     }
 
-    // --- Navigation ---
     getVisibleEnabledOptions() {
         return Array.from(this.selectElement.options).filter(opt => {
             if (opt.disabled) return false;
@@ -433,7 +435,6 @@ class WorseSelect implements WorseSelectContext {
         selectElement.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    // --- Internal wiring ---
     private initPlugins() {
         if (!(this.headerElement instanceof HTMLButtonElement)) return;
         if (!(this.optionsListElement instanceof HTMLDivElement)) return;
@@ -713,6 +714,30 @@ class WorseSelect implements WorseSelectContext {
 
         selectElement.style.display = 'none';
         selectElement.after(worseSelectElement);
+    }
+
+    private handleTypeAhead = (e: KeyboardEvent) => {
+        if (e.key.length !== 1 || document.activeElement === this.searchInputElement) return;
+
+        const worseOptions = this.optionsListElement?.children;
+        this.typeAheadText += e.key;
+        let typeAheadText = this.typeAheadText.toLowerCase();
+
+        if (worseOptions && typeAheadText) {
+            const matchingWorseOption = Array.from(worseOptions).find(worseOption => {
+                return worseOption.textContent.trim().toLowerCase().startsWith(typeAheadText);
+            });
+            this.optionsListElement?.querySelector('.active')?.classList.remove('active');
+            matchingWorseOption?.classList.add('active');
+
+            if (matchingWorseOption) matchingWorseOption.scrollIntoView({ block: 'nearest' });
+        }
+        if (this.typeAheadTimerId) {
+            clearTimeout(this.typeAheadTimerId);
+        }
+        this.typeAheadTimerId = setTimeout(() => {
+            this.typeAheadText = '';
+        }, this.typeAheadTimeout);
     }
 }
 

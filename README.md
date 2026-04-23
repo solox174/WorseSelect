@@ -31,6 +31,7 @@ That means:
 - Searchable option lists with match highlighting and screen reader announcements (matches are highlighted and scrolled into view; non-matching options stay visible to preserve context)
 - Listbox mode via native `size`
 - Multi-select via native `multiple`
+- Type-ahead option find
 - Placeholder option support via the conventional `<option value="" disabled>` pattern
 - Dynamic DOM support with optional observer-based auto-mount
 - Theming through CSS custom properties

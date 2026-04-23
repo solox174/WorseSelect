@@ -385,13 +385,12 @@ function createWorseSelect(worseSelectInstance) {
 }
 
 // src/worse-select/features/search.ts
-function applyFilter(context, searchTerm) {
+function applyHighlight(context, searchTerm) {
   const term = searchTerm.trim().toLowerCase();
-  Array.from(context.selectElement.options).forEach((selectOption) => {
-    const el = getWorseOptionElement(selectOption);
-    if (!(el instanceof HTMLDivElement)) return;
-    const matches = term !== "" && el.textContent.toLowerCase().includes(term);
-    el.classList.toggle("matches", matches);
+  Array.from(context.optionsListElement.children).forEach((worseOption) => {
+    if (!(worseOption instanceof HTMLDivElement)) return;
+    const matches = term !== "" && worseOption.textContent.toLowerCase().includes(term);
+    worseOption.classList.toggle("matches", matches);
   });
   if (!term) {
     context.clearMessage();
@@ -418,12 +417,12 @@ function createBuiltinSearchPlugin() {
         const target = event.target;
         if (!(target instanceof HTMLInputElement)) return;
         searchTerm = target.value;
-        applyFilter(context, searchTerm);
+        applyHighlight(context, searchTerm);
       });
     },
     onSync() {
       if (!pluginContext) return;
-      applyFilter(pluginContext, searchTerm);
+      applyHighlight(pluginContext, searchTerm);
     },
     onClose() {
       if (!pluginContext) return;
@@ -432,7 +431,7 @@ function createBuiltinSearchPlugin() {
       if (searchInputElement instanceof HTMLInputElement) {
         searchInputElement.value = "";
       }
-      applyFilter(pluginContext, "");
+      applyHighlight(pluginContext, "");
     },
     destroy() {
       pluginContext = null;
@@ -446,9 +445,31 @@ var instances = /* @__PURE__ */ new WeakMap();
 var nextInstanceId = 0;
 var _WorseSelect = class _WorseSelect {
   constructor(selectElement, config = {}, root = document, plugins = []) {
+    this.typeAheadText = "";
+    this.typeAheadTimeout = 1e3;
     this.open = false;
     this.plugins = [];
     this.pluginListeners = [];
+    this.handleTypeAhead = (e) => {
+      if (e.key.length !== 1 || document.activeElement === this.searchInputElement) return;
+      const worseOptions = this.optionsListElement?.children;
+      this.typeAheadText += e.key;
+      let typeAheadText = this.typeAheadText.toLowerCase();
+      if (worseOptions && typeAheadText) {
+        const matchingWorseOption = Array.from(worseOptions).find((worseOption) => {
+          return worseOption.textContent.trim().toLowerCase().startsWith(typeAheadText);
+        });
+        this.optionsListElement?.querySelector(".active")?.classList.remove("active");
+        matchingWorseOption?.classList.add("active");
+        if (matchingWorseOption) matchingWorseOption.scrollIntoView({ block: "nearest" });
+      }
+      if (this.typeAheadTimerId) {
+        clearTimeout(this.typeAheadTimerId);
+      }
+      this.typeAheadTimerId = setTimeout(() => {
+        this.typeAheadText = "";
+      }, this.typeAheadTimeout);
+    };
     this.selectElement = selectElement;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.root = root;
@@ -467,7 +488,6 @@ var _WorseSelect = class _WorseSelect {
       }
     }
   }
-  // --- Lifecycle ---
   mount() {
     if (this.worseSelectElement) return;
     ensureStyles();
@@ -480,6 +500,7 @@ var _WorseSelect = class _WorseSelect {
     if (_WorseSelect.mountedInstances.size === 0) {
       document.addEventListener("pointerdown", _WorseSelect.handleDocumentPointerDown);
     }
+    this.worseSelectElement.addEventListener("keyup", this.handleTypeAhead);
     _WorseSelect.mountedInstances.add(this);
     this.bindEvents();
     this.observeOptions();
@@ -525,6 +546,7 @@ var _WorseSelect = class _WorseSelect {
     if (_WorseSelect.mountedInstances.size === 0) {
       document.removeEventListener("pointerdown", _WorseSelect.handleDocumentPointerDown);
     }
+    this.worseSelectElement?.removeEventListener("keyup", this.handleTypeAhead);
     Array.from(this.selectElement.options).forEach(unlinkOption);
     this.worseSelectElement?.remove();
     this.selectElement.style.display = "";
@@ -537,7 +559,6 @@ var _WorseSelect = class _WorseSelect {
     this.open = false;
     this.activeOption = void 0;
   }
-  // --- State sync ---
   syncDimensions() {
     const { worseSelectElement, headerElement, optionsListElement, selectElement, config } = this;
     if (!(worseSelectElement instanceof HTMLDivElement)) return;
@@ -643,7 +664,6 @@ var _WorseSelect = class _WorseSelect {
       plugin.onSync?.();
     }
   }
-  // --- Message ---
   setMessage(text) {
     const { messageElement } = this;
     if (!(messageElement instanceof HTMLDivElement)) return;
@@ -658,7 +678,6 @@ var _WorseSelect = class _WorseSelect {
     if (!(this.messageElement instanceof HTMLDivElement)) return;
     this.messageElement.textContent = "";
   }
-  // --- Open / close ---
   openDropdown() {
     if (this.selectElement.disabled) return;
     if (shouldUseListboxMode(this)) return;
@@ -675,6 +694,7 @@ var _WorseSelect = class _WorseSelect {
     for (const plugin of this.plugins) {
       plugin.onClose?.();
     }
+    this.root.querySelector(".active")?.classList.remove("active");
     this.updateOpenState();
   }
   toggleDropdown() {
@@ -693,7 +713,6 @@ var _WorseSelect = class _WorseSelect {
     this.closeDropdown();
     this.headerElement?.focus();
   }
-  // --- Navigation ---
   getVisibleEnabledOptions() {
     return Array.from(this.selectElement.options).filter((opt) => {
       if (opt.disabled) return false;
@@ -739,7 +758,6 @@ var _WorseSelect = class _WorseSelect {
     }
     selectElement.dispatchEvent(new Event("change", { bubbles: true }));
   }
-  // --- Internal wiring ---
   initPlugins() {
     if (!(this.headerElement instanceof HTMLButtonElement)) return;
     if (!(this.optionsListElement instanceof HTMLDivElement)) return;
