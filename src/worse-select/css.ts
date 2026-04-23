@@ -22,12 +22,16 @@ export function createCSS() {
         --ws-divider-color: #d0d0d0;
         --ws-highlight-bg: #fff3a3;
         --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+        --ws-height: ${DEFAULT_CONFIG.height};
+        --ws-motion-duration: 160ms;
+        --ws-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
     
     .worse-select-container {
         position: relative;
         display: inline-block;
         min-width: 0;
+        height: var(--ws-height);
         font: inherit;
         vertical-align: middle;
         color: var(--ws-text-color);
@@ -40,15 +44,11 @@ export function createCSS() {
     .worse-select-header {
         box-sizing: border-box;
         width: ${DEFAULT_CONFIG.width};
-        height: ${DEFAULT_CONFIG.height};
+        height: var(--ws-height);
         padding: 0 28px 0 8px;
         border: 1px solid var(--ws-border-color);
         border-radius: var(--ws-border-radius);
         background-color: var(--ws-bg);
-        background-repeat: no-repeat;
-        background-position: right 8px center;
-        background-size: 10px 10px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23333333' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
         color: var(--ws-text-color);
         font: inherit;
         line-height: normal;
@@ -60,12 +60,29 @@ export function createCSS() {
         text-overflow: ellipsis;
     }
 
-    .worse-select-container.listbox .worse-select-header {
-        display: none;
+    .worse-select-header::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: 8px;
+        width: 10px;
+        height: 10px;
+        pointer-events: none;
+        transform: translateY(-50%) rotate(0deg);
+        transform-origin: center;
+        transition: transform var(--ws-motion-duration) var(--ws-motion-ease);
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 10px 10px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23333333' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
 
-    .worse-select-container.open .worse-select-header {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 7.5L6 4.5L9 7.5' stroke='%23333333' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    .worse-select-container.open .worse-select-header::after {
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .worse-select-container.listbox .worse-select-header {
+        display: none;
     }
 
     .worse-select-container.disabled .worse-select-header {
@@ -92,15 +109,37 @@ export function createCSS() {
         right: 0;
         z-index: 1000;
         display: none;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-6px);
+        transform-origin: top center;
         border: 1px solid var(--ws-border-color);
         border-radius: var(--ws-border-radius);
         background: var(--ws-bg);
         box-shadow: var(--ws-shadow);
         padding: 2px;
+        transition:
+            display var(--ws-motion-duration) allow-discrete,
+            opacity var(--ws-motion-duration) var(--ws-motion-ease),
+            transform var(--ws-motion-duration) var(--ws-motion-ease);
     }
 
     .worse-select-container.open .worse-select-options {
         display: block;
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+        transition:
+            display var(--ws-motion-duration) allow-discrete,
+            opacity var(--ws-motion-duration) var(--ws-motion-ease),
+            transform var(--ws-motion-duration) var(--ws-motion-ease);
+    }
+
+    @starting-style {
+        .worse-select-container.open .worse-select-options {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
     }
 
     .worse-select-container.listbox .worse-select-options {
@@ -110,6 +149,10 @@ export function createCSS() {
         right: auto;
         display: block;
         box-shadow: none;
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+        transition: none;
     }
 
     .worse-select-search {
@@ -190,6 +233,13 @@ export function createCSS() {
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
         border: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .worse-select-header::after,
+        .worse-select-options {
+            transition: none;
+        }
     }
     `;
 }
