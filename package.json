@@ -1,6 +1,6 @@
 {
   "name": "worse-select",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Native-first, dependency-free custom selects with search, multi-select, and zero framework lock-in.",
   "keywords": [
     "select",
