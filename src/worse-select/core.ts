@@ -184,7 +184,11 @@ class WorseSelect implements WorseSelectContext {
         }
 
         headerElement.style.font = computedStyle.font;
-        if (!shouldUseListboxMode(this)) {
+        if (shouldUseListboxMode(this)) {
+            const firstOption = optionsListElement.children[0] as HTMLDivElement;
+            const height = firstOption ? getListBoxHeight(selectElement, firstOption) : null;
+            if (height) optionsListElement.style.height = height;
+        } else {
             optionsListElement.style.maxHeight = `${config.dropdownHeightPx}px`;
         }
     }
@@ -716,12 +720,6 @@ class WorseSelect implements WorseSelectContext {
 
         selectElement.style.display = 'none';
         selectElement.after(worseSelectElement);
-
-        if (shouldUseListboxMode(this) && optionsListElement) {
-            const firstOption = optionsListElement.children[0] as HTMLDivElement;
-            const height = firstOption ? getListBoxHeight(selectElement, firstOption) : null;
-            if (height) optionsListElement.style.height = height;
-        }
     }
 
     private handleTypeAhead = (e: KeyboardEvent) => {
