@@ -23,7 +23,7 @@ export function createCSS() {
         --ws-highlight-bg: #fff3a3;
         --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
         --ws-height: ${DEFAULT_CONFIG.height};
-        --ws-motion-duration: 160ms;
+        --ws-motion-duration: 200ms;
         --ws-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
     
