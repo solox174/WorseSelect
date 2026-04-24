@@ -100,9 +100,9 @@ class WorseSelect implements WorseSelectContext {
         this.worseSelectElement.addEventListener('keyup', this.handleTypeAhead);
         WorseSelect.mountedInstances.add(this);
 
+        this.render();
         this.bindEvents();
         this.observeOptions();
-        this.render();
         this.initPlugins();
     }
 
@@ -199,9 +199,13 @@ class WorseSelect implements WorseSelectContext {
         const isListboxMode = shouldUseListboxMode(this);
         const isOpen = isListboxMode ? true : this.open;
 
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches &&
+            getComputedStyle(this.selectElement).colorScheme.includes('dark');
+
         this.worseSelectElement.classList.toggle('open', isOpen);
         this.worseSelectElement.classList.toggle('listbox', isListboxMode);
         this.worseSelectElement.classList.toggle('multiple', isMultipleSelect(this));
+        this.worseSelectElement.classList.toggle('dark', isDark);
 
         if (this.headerElement instanceof HTMLButtonElement) {
             this.headerElement.setAttribute('aria-expanded', String(isOpen));

@@ -34,6 +34,7 @@ That means:
 - Type-ahead option find
 - Placeholder option support via the conventional `<option value="" disabled>` pattern
 - Dynamic DOM support with optional observer-based auto-mount
+- Dark mode — follows the system preference automatically when the page has declared dark mode support
 - Theming through CSS custom properties
 - Full keyboard navigation with ARIA state management
 - Plugin API for extending or replacing built-in behavior
@@ -251,6 +252,39 @@ function createRemoteSearchPlugin(url: string): Plugin {
 worseSelect(document.querySelector('#my-form')!, {
     plugins: [createRemoteSearchPlugin('/api/search')]
 });
+```
+
+---
+
+## Dark mode
+
+worse-select reads the `color-scheme` computed on each select element to decide whether to apply dark styles. If the system preference is dark and `color-scheme` includes `dark` on the select or any of its ancestors, the component switches automatically — no configuration needed.
+
+To opt the whole page in:
+
+```css
+:root {
+    color-scheme: light dark;
+}
+```
+
+To opt in only a section of the page:
+
+```css
+.my-dark-panel {
+    color-scheme: light dark;
+}
+```
+
+worse-select will not apply dark styles to controls outside a dark-mode context, so a light-only page is never affected by the system preference.
+
+To override the dark mode colors, target the `.dark` class that worse-select adds to the container:
+
+```css
+.worse-select-container.dark {
+    --ws-bg: #111;
+    --ws-border-color: #444;
+}
 ```
 
 ---
