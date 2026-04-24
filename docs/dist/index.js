@@ -37,10 +37,13 @@ function createCSS() {
         position: relative;
         display: inline-block;
         min-width: 0;
-        height: var(--ws-height);
         font: inherit;
         vertical-align: middle;
         color: var(--ws-text-color);
+    }
+
+    .worse-select-container:not(.listbox) {
+        height: var(--ws-height);
     }
 
     .worse-select-container.listbox {
@@ -115,22 +118,25 @@ function createCSS() {
         right: 0;
         z-index: 1000;
         display: none;
-        opacity: 0;
-        pointer-events: none;
-        transform: translateY(-6px);
-        transform-origin: top center;
         border: 1px solid var(--ws-border-color);
         border-radius: var(--ws-border-radius);
         background: var(--ws-bg);
         box-shadow: var(--ws-shadow);
         padding: 2px;
+    }
+
+    .worse-select-container:not(.listbox) .worse-select-options {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-6px);
+        transform-origin: top center;
         transition:
             display var(--ws-motion-duration) allow-discrete,
             opacity var(--ws-motion-duration) var(--ws-motion-ease),
             transform var(--ws-motion-duration) var(--ws-motion-ease);
     }
 
-    .worse-select-container.open .worse-select-options {
+    .worse-select-container.open:not(.listbox) .worse-select-options {
         display: block;
         opacity: 1;
         pointer-events: auto;
@@ -142,7 +148,7 @@ function createCSS() {
     }
 
     @starting-style {
-        .worse-select-container.open .worse-select-options {
+        .worse-select-container.open:not(.listbox) .worse-select-options {
             opacity: 0;
             transform: translateY(-6px);
         }
@@ -155,10 +161,6 @@ function createCSS() {
         right: auto;
         display: block;
         box-shadow: none;
-        opacity: 1;
-        pointer-events: auto;
-        transform: none;
-        transition: none;
     }
 
     .worse-select-search {
