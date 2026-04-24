@@ -39,7 +39,7 @@ export function createCSS() {
     .worse-select-container:not(.listbox) {
         height: var(--ws-height);
     }
-
+    
     .worse-select-container.listbox {
         width: 100%;
     }
@@ -112,17 +112,14 @@ export function createCSS() {
         right: 0;
         z-index: 1000;
         display: none;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-6px);
         border: 1px solid var(--ws-border-color);
         border-radius: var(--ws-border-radius);
         background: var(--ws-bg);
         box-shadow: var(--ws-shadow);
         padding: 2px;
-    }
-
-    .worse-select-container:not(.listbox) .worse-select-options {
-        opacity: 0;
-        pointer-events: none;
-        transform: translateY(-6px);
         transform-origin: top center;
         transition:
             display var(--ws-motion-duration) allow-discrete,
@@ -130,7 +127,7 @@ export function createCSS() {
             transform var(--ws-motion-duration) var(--ws-motion-ease);
     }
 
-    .worse-select-container.open:not(.listbox) .worse-select-options {
+    .worse-select-container.open .worse-select-options {
         display: block;
         opacity: 1;
         pointer-events: auto;
@@ -142,7 +139,7 @@ export function createCSS() {
     }
 
     @starting-style {
-        .worse-select-container.open:not(.listbox) .worse-select-options {
+        .worse-select-container.open .worse-select-options {
             opacity: 0;
             transform: translateY(-6px);
         }
@@ -155,6 +152,10 @@ export function createCSS() {
         right: auto;
         display: block;
         box-shadow: none;
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+        transition: none;
     }
 
     .worse-select-search {
@@ -175,8 +176,11 @@ export function createCSS() {
         background: var(--ws-bg);
     }
 
-    .worse-select-options-scroller {
+    .worse-select-container:not(.listbox) .worse-select-options-scroller {
         max-height: ${DEFAULT_CONFIG.dropdownHeightPx}px;
+    }
+    
+    .worse-select-options-scroller {
         overflow-y: auto;
     }
 

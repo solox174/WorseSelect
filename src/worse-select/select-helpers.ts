@@ -16,3 +16,13 @@ export function isMultipleSelect(worseSelectInstance: WorseSelectContext) {
 export function isPlaceholderOption(selectOption: HTMLOptionElement | null): boolean {
     return selectOption !== null && selectOption.value === '' && selectOption.disabled;
 }
+
+export function getListBoxHeight(selectElement: HTMLSelectElement, worseOptionElement: HTMLDivElement): string | null {
+    if (selectElement.size <= 1) return null;
+
+    const oneRowHeight = worseOptionElement.getBoundingClientRect().height;
+    const totalHeight = oneRowHeight * selectElement.size;
+
+    const selectParentHeight = selectElement.parentElement?.getBoundingClientRect().height ?? 10000;
+    return Math.min(totalHeight, selectParentHeight) + 'px';
+}

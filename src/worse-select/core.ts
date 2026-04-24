@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Kevin Matthews
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+import type {WorseSelectContext} from './internal-types';
 /**
  * Progressive-enhancement utilities for native {@link HTMLSelectElement} controls.
  *
@@ -10,14 +11,13 @@
  * Widget-specific behavior uses `data-*` attributes such as `data-searchable` and
  * `data-dropdown-height-px`, keeping the public API aligned with standard HTML.
  */
-import { DEFAULT_CONFIG, SelectConfig, RootNode, WorseSelectOptions, Plugin, PluginContext } from './internal-types';
-import type { WorseSelectContext } from './internal-types';
-import { createCSS } from './css';
-import { getConfig } from './config';
-import { createWorseOptionElement, createWorseSelect, getOptionId, scrollOptionIntoView } from './dom';
-import { getSelectOptionElement, getWorseOptionElement, linkOption, unlinkOption } from './option-map';
-import { isPlaceholderOption, shouldUseListboxMode, isMultipleSelect } from './select-helpers';
-import { createBuiltinSearchPlugin } from './features/search';
+import {DEFAULT_CONFIG, Plugin, PluginContext, RootNode, SelectConfig, WorseSelectOptions} from './internal-types';
+import {createCSS} from './css';
+import {getConfig} from './config';
+import {createWorseOptionElement, createWorseSelect, getOptionId, scrollOptionIntoView} from './dom';
+import {getSelectOptionElement, getWorseOptionElement, linkOption, unlinkOption} from './option-map';
+import {getListBoxHeight, isMultipleSelect, isPlaceholderOption, shouldUseListboxMode} from './select-helpers';
+import {createBuiltinSearchPlugin} from './features/search';
 
 const instances = new WeakMap<HTMLSelectElement, WorseSelect>();
 let nextInstanceId = 0;
@@ -184,7 +184,9 @@ class WorseSelect implements WorseSelectContext {
         }
 
         headerElement.style.font = computedStyle.font;
-        optionsListElement.style.maxHeight = `${config.dropdownHeightPx}px`;
+        if (!shouldUseListboxMode(this)) {
+            optionsListElement.style.maxHeight = `${config.dropdownHeightPx}px`;
+        }
     }
 
     updateOpenState() {
@@ -709,11 +711,17 @@ class WorseSelect implements WorseSelectContext {
     }
 
     private render() {
-        const { selectElement, worseSelectElement } = this;
+        const { selectElement, worseSelectElement, optionsListElement } = this;
         if (!(worseSelectElement instanceof HTMLDivElement)) return;
 
         selectElement.style.display = 'none';
         selectElement.after(worseSelectElement);
+
+        if (shouldUseListboxMode(this) && optionsListElement) {
+            const firstOption = optionsListElement.children[0] as HTMLDivElement;
+            const height = firstOption ? getListBoxHeight(selectElement, firstOption) : null;
+            if (height) optionsListElement.style.height = height;
+        }
     }
 
     private handleTypeAhead = (e: KeyboardEvent) => {
