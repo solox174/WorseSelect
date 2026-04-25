@@ -290,6 +290,39 @@
     </div>
 
     <div class="section">
+        <h2>Option groups</h2>
+        <div class="demo-row">
+            <div class="demo-control">
+                <label for="optgroup">Vehicle</label>
+                <select id="optgroup">
+                    <option value="" disabled selected>Choose one</option>
+                    <optgroup label="Cars">
+                        <option value="ford">Ford</option>
+                        <option value="honda">Honda</option>
+                        <option value="toyota">Toyota</option>
+                    </optgroup>
+                    <optgroup label="Discontinued" disabled>
+                        <option value="pontiac">Pontiac</option>
+                        <option value="oldsmobile">Oldsmobile</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <pre>&lt;select&gt;
+  &lt;optgroup label="Cars"&gt;
+    &lt;option value="ford"&gt;Ford&lt;/option&gt;
+    &lt;option value="honda"&gt;Honda&lt;/option&gt;
+  &lt;/optgroup&gt;
+  &lt;optgroup label="Discontinued" disabled&gt;
+    &lt;option value="pontiac"&gt;Pontiac&lt;/option&gt;
+  &lt;/optgroup&gt;
+&lt;/select&gt;</pre>
+                <p class="note">Native <code>&lt;optgroup&gt;</code> support. Disabled groups propagate to their options automatically.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
         <h2>Disabled</h2>
         <div class="demo-row">
             <div class="demo-control">

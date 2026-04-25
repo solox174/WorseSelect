@@ -31,7 +31,7 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
+  "sideEffects": true,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,7 +44,7 @@
   },
   "scripts": {
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch --out-dir dist --sourcemap inline",
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean --out-dir dist",
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --out-dir dist --minify",
     "demo": "npm run build && cp dist/index.js docs/dist/index.js",
     "prepublishOnly": "npm run build",
     "test": "playwright test",

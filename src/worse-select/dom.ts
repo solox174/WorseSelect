@@ -155,18 +155,60 @@ export function createWorseSelect(worseSelectInstance: WorseSelectContext) {
         optionsListElement.setAttribute('aria-multiselectable', 'true');
     }
 
-    const selectOptions = Array.from(worseSelectInstance.selectElement.options);
+    const selectChildren = worseSelectInstance.selectElement.children;
+    const worseSelectChildren: HTMLDivElement[] = [];
+    const optionIndexRef = { value: 0 };
 
-    for (let i = 0; i < selectOptions.length; i++) {
-        const selectOption = selectOptions[i];
-        const worseOptionElement = createWorseOptionElement(
-            worseSelectInstance,
-            selectOption,
-            i
-        );
-        linkOption(selectOption, worseOptionElement);
-        optionsListElement.appendChild(worseOptionElement);
+    for (let i = 0; i < selectChildren.length; i++) {
+        const selectChild = selectChildren[i];
+
+        if (selectChild instanceof HTMLOptGroupElement) {
+            worseSelectChildren.push(createWorseOptGroupElement(worseSelectInstance, selectChild, optionIndexRef));
+        } else if (selectChild instanceof HTMLOptionElement) {
+            worseSelectChildren.push(setupWorseOptionElement(worseSelectInstance, selectChild, optionIndexRef.value));
+            optionIndexRef.value++;
+        }
     }
+    optionsListElement.append(...worseSelectChildren);
 
     return worseSelectElement;
+}
+
+function createWorseOptGroupElement(
+    worseSelectInstance: WorseSelectContext,
+    optGroupElement: HTMLOptGroupElement,
+    optionIndexRef: { value: number },
+) {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'worse-select-optgroup-label';
+    labelEl.textContent = optGroupElement.label;
+
+    const selectOptions = Array.from(optGroupElement.getElementsByTagName('option')) as HTMLOptionElement[];
+    const worseOptionElements = selectOptions.map((selectOption) => {
+        const el = setupWorseOptionElement(worseSelectInstance, selectOption, optionIndexRef.value);
+        optionIndexRef.value++;
+        if (optGroupElement.disabled) {
+            el.classList.add('disabled');
+            el.setAttribute('aria-disabled', 'true');
+        }
+        return el;
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'worse-select-optgroup' + (optGroupElement.disabled ? ' disabled' : '');
+    wrapper.setAttribute('role', 'group');
+    wrapper.setAttribute('aria-label', optGroupElement.label);
+    wrapper.append(labelEl, ...worseOptionElements);
+    return wrapper;
+}
+
+function setupWorseOptionElement(worseSelectInstance: WorseSelectContext, selectOption: HTMLOptionElement, index: number) {
+    const worseOptionElement= createWorseOptionElement(
+        worseSelectInstance,
+        selectOption,
+        index
+    );
+    linkOption(selectOption, worseOptionElement);
+
+    return worseOptionElement;
 }

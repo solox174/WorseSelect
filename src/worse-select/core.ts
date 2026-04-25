@@ -261,8 +261,10 @@ class WorseSelect implements WorseSelectContext {
 
         Array.from(selectElement.options).forEach(selectOption => {
             const el = getWorseOptionElement(selectOption);
-            el?.classList.toggle('disabled', selectOption.disabled);
-            el?.setAttribute('aria-disabled', String(selectOption.disabled));
+            const isDisabled = selectOption.disabled ||
+                (selectOption.parentElement instanceof HTMLOptGroupElement && selectOption.parentElement.disabled);
+            el?.classList.toggle('disabled', isDisabled);
+            el?.setAttribute('aria-disabled', String(isDisabled));
         });
     }
 

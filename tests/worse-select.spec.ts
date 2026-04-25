@@ -169,6 +169,55 @@ test.describe('multi-select', () => {
     });
 });
 
+test.describe('optgroup', () => {
+    test('renders group labels', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        await expect(ws.locator('.worse-select-optgroup-label')).toHaveCount(2);
+        await expect(ws.locator('.worse-select-optgroup-label').first()).toHaveText('Cars');
+    });
+
+    test('options inside a group are indented', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        const groupOption = ws.locator('.worse-select-optgroup .worse-select-option').first();
+        await expect(groupOption).toBeVisible();
+    });
+
+    test('selects an option from a group', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        await ws.locator('.worse-select-option', { hasText: 'Honda' }).click();
+        await expect(ws.locator('.worse-select-header-label')).toHaveText('Honda');
+        await expect(page.locator('#optgroup')).toHaveValue('honda');
+    });
+
+    test('disabled group has disabled class on wrapper', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        const disabledGroup = ws.locator('.worse-select-optgroup.disabled');
+        await expect(disabledGroup).toHaveCount(1);
+        await expect(disabledGroup.locator('.worse-select-optgroup-label')).toHaveText('Discontinued');
+    });
+
+    test('options in a disabled group are not selectable', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        const disabledOption = ws.locator('.worse-select-optgroup.disabled .worse-select-option').first();
+        await expect(disabledOption).toHaveClass(/disabled/);
+        await disabledOption.click({ force: true });
+        await expect(page.locator('#optgroup')).toHaveValue('');
+    });
+
+    test('group wrapper has role=group and aria-label', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        const group = ws.locator('.worse-select-optgroup').first();
+        await expect(group).toHaveAttribute('role', 'group');
+        await expect(group).toHaveAttribute('aria-label', 'Cars');
+    });
+});
+
 test.describe('dynamic options', () => {
     test('adding an option updates the widget', async ({ page }) => {
         const ws = page.locator('#dynamic + .worse-select-container');

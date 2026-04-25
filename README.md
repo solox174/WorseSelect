@@ -302,6 +302,7 @@ worse-select uses CSS custom properties for theming. Override only what you need
 | `--ws-focus-outline` | `#2563eb` |
 | `--ws-search-border-color` | `#b7b7b7` |
 | `--ws-divider-color` | `#d0d0d0` |
+| `--ws-optgroup-label-color` | `#6b7280` |
 | `--ws-highlight-bg` | `#fff3a3` |
 | `--ws-shadow` | `0 4px 12px rgba(0, 0, 0, 0.16)` |
 
@@ -324,6 +325,7 @@ Dark mode has its own set of variables so light and dark overrides don't interfe
 | `--ws-dark-focus-outline` | `#60a5fa` |
 | `--ws-dark-search-border-color` | `#555` |
 | `--ws-dark-divider-color` | `#3a3a3a` |
+| `--ws-dark-optgroup-label-color` | `#9ca3af` |
 | `--ws-dark-highlight-bg` | `#4a3c00` |
 | `--ws-dark-shadow` | `0 4px 12px rgba(0, 0, 0, 0.4)` |
 
