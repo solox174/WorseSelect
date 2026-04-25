@@ -62,6 +62,7 @@ class WorseSelect implements WorseSelectContext {
     onHeaderKeyDown?: EventListener;
     onOptionsKeyDown?: EventListener;
     onSearchKeyDown?: EventListener;
+    onListboxFocus?: EventListener;
 
     open = false;
     activeOption?: HTMLOptionElement;
@@ -147,6 +148,11 @@ class WorseSelect implements WorseSelectContext {
         if (this.onSearchKeyDown && this.searchInputElement) {
             this.searchInputElement.removeEventListener('keydown', this.onSearchKeyDown);
             this.onSearchKeyDown = undefined;
+        }
+
+        if (this.onListboxFocus && this.optionsListElement) {
+            this.optionsListElement.removeEventListener('focus', this.onListboxFocus);
+            this.onListboxFocus = undefined;
         }
 
         WorseSelect.mountedInstances.delete(this);
@@ -635,6 +641,15 @@ class WorseSelect implements WorseSelectContext {
         headerElement.addEventListener('keydown', onHeaderKeyDown);
         optionsListElement.addEventListener('keydown', onOptionsKeyDown);
 
+        const onListboxFocus: EventListener = () => {
+            if (!shouldUseListboxMode(this) || this.activeOption) return;
+            const selected = Array.from(selectElement.options).find(o => o.selected && !isPlaceholderOption(o));
+            const first = this.getVisibleEnabledOptions()[0];
+            const target = selected ?? first;
+            if (target) this.setActiveOption(target, true);
+        };
+        optionsListElement.addEventListener('focus', onListboxFocus);
+
         if (searchInputElement instanceof HTMLInputElement) {
             searchInputElement.addEventListener('keydown', onSearchKeyDown);
             this.onSearchKeyDown = onSearchKeyDown;
@@ -645,6 +660,7 @@ class WorseSelect implements WorseSelectContext {
         this.onHeaderClick = onHeaderClick;
         this.onHeaderKeyDown = onHeaderKeyDown;
         this.onOptionsKeyDown = onOptionsKeyDown;
+        this.onListboxFocus = onListboxFocus;
 
         this.syncAll();
     }

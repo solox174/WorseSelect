@@ -253,6 +253,25 @@ function createCSS() {
             transition: none;
         }
     }
+
+.worse-select-container.dark {
+        color-scheme: dark;
+        --ws-border-color: #555;
+        --ws-bg: #1e1e1e;
+        --ws-text-color: #e8eaed;
+        --ws-disabled-bg: #2a2a2a;
+        --ws-disabled-text-color: #777;
+        --ws-hover-bg: #3a3a3a;
+        --ws-active-bg: #1a3a5c;
+        --ws-active-outline: #60a5fa;
+        --ws-selected-bg: #1e3a5f;
+        --ws-selected-text-color: #93c5fd;
+        --ws-focus-outline: #60a5fa;
+        --ws-search-border-color: #555;
+        --ws-divider-color: #3a3a3a;
+        --ws-highlight-bg: #4a3c00;
+        --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
     `
   );
 }
@@ -565,9 +584,9 @@ var _WorseSelect = class _WorseSelect {
     }
     this.worseSelectElement.addEventListener("keyup", this.handleTypeAhead);
     _WorseSelect.mountedInstances.add(this);
+    this.render();
     this.bindEvents();
     this.observeOptions();
-    this.render();
     this.initPlugins();
   }
   destroy() {
@@ -605,6 +624,10 @@ var _WorseSelect = class _WorseSelect {
       this.searchInputElement.removeEventListener("keydown", this.onSearchKeyDown);
       this.onSearchKeyDown = void 0;
     }
+    if (this.onListboxFocus && this.optionsListElement) {
+      this.optionsListElement.removeEventListener("focus", this.onListboxFocus);
+      this.onListboxFocus = void 0;
+    }
     _WorseSelect.mountedInstances.delete(this);
     if (_WorseSelect.mountedInstances.size === 0) {
       document.removeEventListener("pointerdown", _WorseSelect.handleDocumentPointerDown);
@@ -632,7 +655,11 @@ var _WorseSelect = class _WorseSelect {
       worseSelectElement.style.width = computedStyle.width;
     }
     headerElement.style.font = computedStyle.font;
-    if (!shouldUseListboxMode(this)) {
+    if (shouldUseListboxMode(this)) {
+      const firstOption = optionsListElement.children[0];
+      const height = firstOption ? getListBoxHeight(selectElement, firstOption) : null;
+      if (height) optionsListElement.style.height = height;
+    } else {
       optionsListElement.style.maxHeight = `${config.dropdownHeightPx}px`;
     }
   }
@@ -640,9 +667,11 @@ var _WorseSelect = class _WorseSelect {
     if (!(this.worseSelectElement instanceof HTMLDivElement)) return;
     const isListboxMode = shouldUseListboxMode(this);
     const isOpen = isListboxMode ? true : this.open;
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches && getComputedStyle(this.selectElement).colorScheme.includes("dark");
     this.worseSelectElement.classList.toggle("open", isOpen);
     this.worseSelectElement.classList.toggle("listbox", isListboxMode);
     this.worseSelectElement.classList.toggle("multiple", isMultipleSelect(this));
+    this.worseSelectElement.classList.toggle("dark", isDark);
     if (this.headerElement instanceof HTMLButtonElement) {
       this.headerElement.setAttribute("aria-expanded", String(isOpen));
     }
@@ -994,6 +1023,14 @@ var _WorseSelect = class _WorseSelect {
     headerElement.addEventListener("click", onHeaderClick);
     headerElement.addEventListener("keydown", onHeaderKeyDown);
     optionsListElement.addEventListener("keydown", onOptionsKeyDown);
+    const onListboxFocus = () => {
+      if (!shouldUseListboxMode(this) || this.activeOption) return;
+      const selected = Array.from(selectElement.options).find((o) => o.selected && !isPlaceholderOption(o));
+      const first = this.getVisibleEnabledOptions()[0];
+      const target = selected ?? first;
+      if (target) this.setActiveOption(target, true);
+    };
+    optionsListElement.addEventListener("focus", onListboxFocus);
     if (searchInputElement instanceof HTMLInputElement) {
       searchInputElement.addEventListener("keydown", onSearchKeyDown);
       this.onSearchKeyDown = onSearchKeyDown;
@@ -1003,6 +1040,7 @@ var _WorseSelect = class _WorseSelect {
     this.onHeaderClick = onHeaderClick;
     this.onHeaderKeyDown = onHeaderKeyDown;
     this.onOptionsKeyDown = onOptionsKeyDown;
+    this.onListboxFocus = onListboxFocus;
     this.syncAll();
   }
   // DOM diffing is kept inline here because the mutation cases are tightly coupled to each
@@ -1067,11 +1105,6 @@ var _WorseSelect = class _WorseSelect {
     if (!(worseSelectElement instanceof HTMLDivElement)) return;
     selectElement.style.display = "none";
     selectElement.after(worseSelectElement);
-    if (shouldUseListboxMode(this) && optionsListElement) {
-      const firstOption = optionsListElement.children[0];
-      const height = firstOption ? getListBoxHeight(selectElement, firstOption) : null;
-      if (height) optionsListElement.style.height = height;
-    }
   }
 };
 // Tracks all mounted instances so a single document-level pointerdown listener can close any
