@@ -256,21 +256,21 @@ function createCSS() {
 
 .worse-select-container.dark {
         color-scheme: dark;
-        --ws-border-color: #555;
-        --ws-bg: #1e1e1e;
-        --ws-text-color: #e8eaed;
-        --ws-disabled-bg: #2a2a2a;
-        --ws-disabled-text-color: #777;
-        --ws-hover-bg: #3a3a3a;
-        --ws-active-bg: #1a3a5c;
-        --ws-active-outline: #60a5fa;
-        --ws-selected-bg: #1e3a5f;
-        --ws-selected-text-color: #93c5fd;
-        --ws-focus-outline: #60a5fa;
-        --ws-search-border-color: #555;
-        --ws-divider-color: #3a3a3a;
-        --ws-highlight-bg: #4a3c00;
-        --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --ws-border-color: var(--ws-dark-border-color, #555);
+        --ws-bg: var(--ws-dark-bg, #1e1e1e);
+        --ws-text-color: var(--ws-dark-text-color, #e8eaed);
+        --ws-disabled-bg: var(--ws-dark-disabled-bg, #2a2a2a);
+        --ws-disabled-text-color: var(--ws-dark-disabled-text-color, #777);
+        --ws-hover-bg: var(--ws-dark-hover-bg, #3a3a3a);
+        --ws-active-bg: var(--ws-dark-active-bg, #1a3a5c);
+        --ws-active-outline: var(--ws-dark-active-outline, #60a5fa);
+        --ws-selected-bg: var(--ws-dark-selected-bg, #1e3a5f);
+        --ws-selected-text-color: var(--ws-dark-selected-text-color, #93c5fd);
+        --ws-focus-outline: var(--ws-dark-focus-outline, #60a5fa);
+        --ws-search-border-color: var(--ws-dark-search-border-color, #555);
+        --ws-divider-color: var(--ws-dark-divider-color, #3a3a3a);
+        --ws-highlight-bg: var(--ws-dark-highlight-bg, #4a3c00);
+        --ws-shadow: var(--ws-dark-shadow, 0 4px 12px rgba(0, 0, 0, 0.4));
     }
     `
   );
