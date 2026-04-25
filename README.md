@@ -258,7 +258,7 @@ worseSelect(document.querySelector('#my-form')!, {
 
 ## Dark mode
 
-worse-select reads the `color-scheme` computed on each select element to decide whether to apply dark styles. If the system preference is dark and `color-scheme` includes `dark` on the select or any of its ancestors, the component switches automatically — no configuration needed.
+worse-select reads the `color-scheme` computed on each select element to decide whether to apply dark styles. If the page preference is dark and `color-scheme` includes `dark` on the select or any of its ancestors, the component switches automatically — no configuration needed.
 
 To opt the whole page in:
 
@@ -278,41 +278,54 @@ To opt in only a section of the page:
 
 worse-select will not apply dark styles to controls outside a dark-mode context, so a light-only page is never affected by the system preference.
 
-To override the dark mode colors, target the `.dark` class that worse-select adds to the container:
-
-```css
-.worse-select-container.dark {
-    --ws-bg: #111;
-    --ws-border-color: #444;
-}
-```
-
 ---
 
 ## Styling
 
 worse-select uses CSS custom properties for theming. Override only what you need.
 
-```css
-:root {
-    --ws-border-color: #767676;
-    --ws-border-radius: 2px;
-    --ws-bg: #fff;
-    --ws-text-color: inherit;
-    --ws-disabled-bg: #f0f0f0;
-    --ws-disabled-text-color: #6d6d6d;
-    --ws-hover-bg: #f1f1f1;
-    --ws-active-bg: #eef4ff;
-    --ws-active-outline: #2563eb;
-    --ws-selected-bg: #d2e3fc;
-    --ws-selected-text-color: #174ea6;
-    --ws-focus-outline: #2563eb;
-    --ws-search-border-color: #b7b7b7;
-    --ws-divider-color: #d0d0d0;
-    --ws-highlight-bg: #fff3a3;
-    --ws-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
-}
-```
+### Light mode
+
+| Variable | Default |
+|---|---|
+| `--ws-bg` | `#fff` |
+| `--ws-border-color` | `#767676` |
+| `--ws-border-radius` | `4px` |
+| `--ws-text-color` | `inherit` |
+| `--ws-disabled-bg` | `#f0f0f0` |
+| `--ws-disabled-text-color` | `#6d6d6d` |
+| `--ws-hover-bg` | `#f1f1f1` |
+| `--ws-active-bg` | `#eef4ff` |
+| `--ws-active-outline` | `#2563eb` |
+| `--ws-selected-bg` | `#d2e3fc` |
+| `--ws-selected-text-color` | `#174ea6` |
+| `--ws-focus-outline` | `#2563eb` |
+| `--ws-search-border-color` | `#b7b7b7` |
+| `--ws-divider-color` | `#d0d0d0` |
+| `--ws-highlight-bg` | `#fff3a3` |
+| `--ws-shadow` | `0 4px 12px rgba(0, 0, 0, 0.16)` |
+
+### Dark mode
+
+Dark mode has its own set of variables so light and dark overrides don't interfere with each other.
+
+| Variable | Default |
+|---|---|
+| `--ws-dark-bg` | `#1e1e1e` |
+| `--ws-dark-border-color` | `#555` |
+| `--ws-dark-text-color` | `#e8eaed` |
+| `--ws-dark-disabled-bg` | `#2a2a2a` |
+| `--ws-dark-disabled-text-color` | `#777` |
+| `--ws-dark-hover-bg` | `#3a3a3a` |
+| `--ws-dark-active-bg` | `#1a3a5c` |
+| `--ws-dark-active-outline` | `#60a5fa` |
+| `--ws-dark-selected-bg` | `#1e3a5f` |
+| `--ws-dark-selected-text-color` | `#93c5fd` |
+| `--ws-dark-focus-outline` | `#60a5fa` |
+| `--ws-dark-search-border-color` | `#555` |
+| `--ws-dark-divider-color` | `#3a3a3a` |
+| `--ws-dark-highlight-bg` | `#4a3c00` |
+| `--ws-dark-shadow` | `0 4px 12px rgba(0, 0, 0, 0.4)` |
 
 ---
 
