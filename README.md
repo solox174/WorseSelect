@@ -34,7 +34,7 @@ That means:
 - Type-ahead option find
 - Placeholder option support via the conventional `<option value="" disabled>` pattern
 - Dynamic DOM support with optional observer-based auto-mount
-- Dark mode — follows the system preference automatically when the page has declared dark mode support
+- Dark mode — follows the page preference automatically when it declares dark mode support
 - Theming through CSS custom properties
 - Full keyboard navigation with ARIA state management
 - Plugin API for extending or replacing built-in behavior
