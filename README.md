@@ -137,8 +137,6 @@ Custom widget behavior is configured with `data-*` attributes on the native `<se
 |---|---|---|---|
 | `data-searchable` | `true \| false` | `false` | Adds a search input above the options list |
 | `data-dropdown-height-px` | `number` | `400` | Sets the max height of the options scroller |
-| `data-width` | `string` | `100%` | Overrides the rendered widget width |
-| `data-height` | `string` | `32px` | Overrides the rendered widget height |
 
 ## Native attributes
 
@@ -147,6 +145,7 @@ These stay native on purpose:
 - `size` — triggers listbox mode
 - `multiple` — enables multi-select
 - `disabled` — disables the control
+- `style` — style is applied to widget
 
 That split keeps the API aligned with standard HTML instead of introducing parallel widget options.
 
