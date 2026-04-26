@@ -128,6 +128,7 @@
             overflow-x: auto;
             color: var(--text);
             white-space: pre;
+            max-width: 100%;
         }
 
         .note {
@@ -145,6 +146,7 @@
             display: flex;
             gap: 8px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -178,6 +180,7 @@
             display: flex;
             gap: 12px;
             align-items: flex-end;
+            flex-wrap: wrap;
         }
 
         .form-row .demo-control { flex: 0 0 220px; }
@@ -188,13 +191,76 @@
             color: var(--text-muted);
             font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
             min-height: 1.2em;
+            word-break: break-word;
         }
 
         .demo-control select,
         .form-row select { width: 100%; }
 
-        @media (max-width: 600px) {
-            .demo-row { grid-template-columns: 1fr; }
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            header p {
+                font-size: 1rem;
+            }
+
+            .install {
+                font-size: 0.8rem;
+                padding: 8px 16px;
+            }
+
+            main {
+                margin: 24px auto;
+                padding: 0 16px 48px;
+            }
+
+            .section {
+                padding: 24px 16px;
+            }
+
+            .demo-row {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            pre {
+                font-size: 0.72rem;
+                padding: 12px;
+            }
+
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .form-row .demo-control {
+                flex: 1 1 auto;
+            }
+
+            .btn-primary {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding: 32px 16px 32px;
+            }
+
+            header h1 {
+                font-size: 1.75rem;
+            }
+
+            .section {
+                padding: 20px 12px;
+            }
+
+            pre {
+                font-size: 0.7rem;
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -452,11 +518,11 @@ select.remove(select.options.length - 1);</pre>
 </main>
 
 <script type="importmap">
-{
-    "imports": {
-        "worse-select": "./dist/index.js"
+    {
+        "imports": {
+            "worse-select": "./dist/index.js"
+        }
     }
-}
 </script>
 <script type="module">
     import { worseSelect } from 'worse-select';
