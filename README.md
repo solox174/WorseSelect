@@ -99,6 +99,23 @@ The placeholder text is shown in the button when the dropdown is closed and clea
 </select>
 ```
 
+### Option groups
+
+```html
+<select>
+  <optgroup label="Cars">
+    <option value="ford">Ford</option>
+    <option value="honda">Honda</option>
+  </optgroup>
+  <optgroup label="Discontinued" disabled>
+    <option value="pontiac">Pontiac</option>
+    <option value="oldsmobile">Oldsmobile</option>
+  </optgroup>
+</select>
+```
+
+Disabled optgroups propagate to their child options automatically.
+
 ### Multi-select listbox
 
 ```html
