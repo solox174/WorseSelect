@@ -11,13 +11,13 @@ import type {WorseSelectContext} from './internal-types';
  * Widget-specific behavior uses `data-*` attributes such as `data-searchable` and
  * `data-dropdown-height-px`, keeping the public API aligned with standard HTML.
  */
-import {DEFAULT_CONFIG, Plugin, PluginContext, RootNode, SelectConfig, WorseSelectOptions} from './internal-types';
-import {createCSS} from './css';
-import {getConfig} from './config';
-import {createWorseOptionElement, createWorseSelect, getOptionId, scrollOptionIntoView} from './dom';
-import {getSelectOptionElement, getWorseOptionElement, linkOption, unlinkOption} from './option-map';
-import {getListBoxHeight, isMultipleSelect, isPlaceholderOption, shouldUseListboxMode} from './select-helpers';
-import {createBuiltinSearchPlugin} from './features/search';
+import { DEFAULT_CONFIG, Plugin, PluginContext, RootNode, SelectConfig, WorseSelectOptions } from './internal-types';
+import { createCSS } from './css';
+import { getConfig } from './config';
+import { createWorseOptionElement, createWorseSelect, getOptionId, scrollOptionIntoView } from './dom';
+import { getSelectOptionElement, getWorseOptionElement, linkOption, unlinkOption } from './option-map';
+import { getListBoxHeight, isMultipleSelect, isPlaceholderOption, shouldUseListboxMode } from './select-helpers';
+import { createBuiltinSearchPlugin } from './features/search';
 
 const instances = new WeakMap<HTMLSelectElement, WorseSelect>();
 let nextInstanceId = 0;

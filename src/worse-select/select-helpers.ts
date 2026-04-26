@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Kevin Matthews
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-import {WorseSelectContext} from "./internal-types";
+import { WorseSelectContext } from './internal-types';
 
 export function shouldUseListboxMode(worseSelectInstance: WorseSelectContext) {
     return worseSelectInstance.selectElement.size > 1;
