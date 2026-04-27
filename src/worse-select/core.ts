@@ -29,6 +29,13 @@ class WorseSelect implements WorseSelectContext {
     // open dropdown when the user clicks outside, instead of registering one listener per instance.
     // Note: `private` is a TypeScript-only constraint and is not enforced in the compiled output.
     private static mountedInstances = new Set<WorseSelect>();
+    private static colorSchemeObserver?: MutationObserver;
+
+    private static handleColorSchemeChange() {
+        for (const instance of WorseSelect.mountedInstances) {
+            instance.updateOpenState();
+        }
+    }
 
     private static handleDocumentPointerDown(event: Event) {
         const target = event.target;
@@ -97,6 +104,8 @@ class WorseSelect implements WorseSelectContext {
 
         if (WorseSelect.mountedInstances.size === 0) {
             document.addEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
+            WorseSelect.colorSchemeObserver = new MutationObserver(WorseSelect.handleColorSchemeChange);
+            WorseSelect.colorSchemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
         }
         this.worseSelectElement.addEventListener('keyup', this.handleTypeAhead);
         WorseSelect.mountedInstances.add(this);
@@ -158,6 +167,8 @@ class WorseSelect implements WorseSelectContext {
         WorseSelect.mountedInstances.delete(this);
         if (WorseSelect.mountedInstances.size === 0) {
             document.removeEventListener('pointerdown', WorseSelect.handleDocumentPointerDown);
+            WorseSelect.colorSchemeObserver?.disconnect();
+            WorseSelect.colorSchemeObserver = undefined;
         }
 
         this.worseSelectElement?.removeEventListener('keyup', this.handleTypeAhead);
@@ -205,8 +216,9 @@ class WorseSelect implements WorseSelectContext {
         const isListboxMode = shouldUseListboxMode(this);
         const isOpen = isListboxMode ? true : this.open;
 
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches &&
-            getComputedStyle(this.selectElement).colorScheme.includes('dark');
+        const computedColorScheme = getComputedStyle(this.selectElement).colorScheme;
+        const isDark = computedColorScheme === 'dark' ||
+            (computedColorScheme.includes('dark') && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
         this.worseSelectElement.classList.toggle('open', isOpen);
         this.worseSelectElement.classList.toggle('listbox', isListboxMode);

@@ -218,6 +218,23 @@ test.describe('optgroup', () => {
     });
 });
 
+test.describe('dark mode', () => {
+    test('adds dark class when color-scheme toggled to dark', async ({ page }) => {
+        const ws = page.locator('#basic + .worse-select-container');
+        await expect(ws).not.toHaveClass(/dark/);
+        await page.locator('#dark-mode-toggle').click();
+        await expect(ws).toHaveClass(/dark/);
+    });
+
+    test('removes dark class when color-scheme toggled back to light', async ({ page }) => {
+        const ws = page.locator('#basic + .worse-select-container');
+        await page.locator('#dark-mode-toggle').click();
+        await expect(ws).toHaveClass(/dark/);
+        await page.locator('#dark-mode-toggle').click();
+        await expect(ws).not.toHaveClass(/dark/);
+    });
+});
+
 test.describe('dynamic options', () => {
     test('adding an option updates the widget', async ({ page }) => {
         const ws = page.locator('#dynamic + .worse-select-container');
