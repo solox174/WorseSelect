@@ -216,6 +216,37 @@ test.describe('optgroup', () => {
         await expect(group).toHaveAttribute('role', 'group');
         await expect(group).toHaveAttribute('aria-label', 'Cars');
     });
+
+    test('selecting a second option clears the first', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').click();
+        await ws.locator('.worse-select-option', { hasText: 'Ford' }).click();
+        await ws.locator('.worse-select-header').click();
+        await ws.locator('.worse-select-option', { hasText: 'Honda' }).click();
+        await expect(ws.locator('.worse-select-option.selected')).toHaveCount(1);
+        await expect(ws.locator('.worse-select-option.selected')).toHaveText('Honda');
+    });
+
+    test('keyboard navigation activates only one option at a time', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').focus();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
+        await expect(ws.locator('.worse-select-option.active')).toHaveCount(1);
+    });
+
+    test('keyboard Enter selects option and clears previous selection', async ({ page }) => {
+        const ws = page.locator('#optgroup + .worse-select-container');
+        await ws.locator('.worse-select-header').focus();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Enter');
+        await ws.locator('.worse-select-header').focus();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Enter');
+        await expect(ws.locator('.worse-select-option.selected')).toHaveCount(1);
+    });
 });
 
 test.describe('dark mode', () => {

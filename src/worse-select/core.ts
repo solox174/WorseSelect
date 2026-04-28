@@ -241,8 +241,7 @@ class WorseSelect implements WorseSelectContext {
         const { optionsListElement, selectElement } = this;
         if (!(optionsListElement instanceof HTMLDivElement)) return;
 
-        Array.from(optionsListElement.children).forEach(el => {
-            if (!(el instanceof HTMLDivElement)) return;
+        Array.from(optionsListElement.querySelectorAll('.worse-select-option')).forEach(el => {
             el.classList.remove('selected');
             el.setAttribute('aria-selected', 'false');
         });
@@ -323,8 +322,8 @@ class WorseSelect implements WorseSelectContext {
         const { optionsListElement, activeOption } = this;
         if (!(optionsListElement instanceof HTMLDivElement)) return;
 
-        Array.from(optionsListElement.children).forEach(el => {
-            if (el instanceof HTMLDivElement) el.classList.remove('active');
+        Array.from(optionsListElement.querySelectorAll('.worse-select-option')).forEach(el => {
+            el.classList.remove('active');
         });
 
         if (activeOption) {
