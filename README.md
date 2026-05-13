@@ -298,7 +298,14 @@ worse-select will not apply dark styles to controls outside a dark-mode context,
 
 ## Styling
 
-worse-select uses CSS custom properties for theming. Override only what you need.
+worse-select uses CSS custom properties for theming. All styles are in a `@layer`, so any override you set wins regardless of specificity.
+
+```css
+:root {
+    --ws-active-bg: #your-color;
+    --ws-focus-outline: #your-color;
+}
+```
 
 ### Light mode
 
@@ -324,7 +331,17 @@ worse-select uses CSS custom properties for theming. Override only what you need
 
 ### Dark mode
 
-Dark mode has its own set of variables so light and dark overrides don't interfere with each other.
+Dark mode requires a separate set of `--ws-dark-*` variables. Setting `--ws-active-bg` on `:root` won't override dark
+mode because the dark container sets that property directly on the element — a direct declaration always beats an
+inherited value in CSS, regardless of layer order. The `--ws-dark-*` variables work because the dark container reads
+them as its source, so your `:root` value is inherited and applied correctly.
+
+```css
+:root {
+    --ws-dark-active-bg: #your-color;
+    --ws-dark-focus-outline: #your-color;
+}
+```
 
 | Variable | Default |
 |---|---|

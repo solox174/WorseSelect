@@ -6,7 +6,6 @@ import { DEFAULT_CONFIG } from './internal-types';
 export function createCSS() {
     return  /* language=CSS */ `
         @layer worse-select {
-
             :root {
                 --ws-border-color: #767676;
                 --ws-border-radius: 4px;
